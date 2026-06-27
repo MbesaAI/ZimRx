@@ -1,0 +1,36 @@
+{
+  "name": "mbesaai",
+  "version": "1.0.0",
+  "description": "> **WhatsApp AI Prescription Assistant for Zimbabwe** > > Helping Zimbabwean patients understand their prescriptions, find registered pharmacies, and store their medication records — all through WhatsApp, no app download required.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:push": "npx prisma db push",
+    "db:studio": "npx prisma studio",
+    "db:generate": "npx prisma generate",
+    "seed:medicines": "node src/db/seed/seedMedicines.js",
+    "seed:pharmacies": "node src/db/seed/seedPharmacies.js",
+    "seed": "npm run seed:medicines && npm run seed:pharmacies"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
+    "@google-cloud/vision": "^5.3.7",
+    "@prisma/client": "^7.8.0",
+    "axios": "^1.18.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prisma": "^7.8.0"
+  }
+}

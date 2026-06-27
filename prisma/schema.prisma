@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Medicine {
+  id               Int       @id @default(autoincrement())
+  tradeName        String?
+  genericName      String?
+  registrationNo   String?   @unique
+  dateRegistered   DateTime?
+  form             String?
+  category         String?
+  strength         String?
+  manufacturer     String?
+  applicantName    String?
+  expiryDate       DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@map("medicines")
+}
+
+model Pharmacy {
+  id            Int       @id @default(autoincrement())
+  licenceNo     String?   @unique
+  premisesName  String?
+  address       String?
+  premisesType  String?
+  town          String?
+  expiryDate    DateTime?
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime  @default(now())
+
+  @@map("pharmacies")
+}
+
+model Conversation {
+  id             Int            @id @default(autoincrement())
+  waId           String         @unique
+  state          String         @default("IDLE")
+  lastMessageAt  DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  prescriptions  Prescription[]
+
+  @@map("conversations")
+}
+
+model Prescription {
+  id              Int          @id @default(autoincrement())
+  conversationId  Int
+  rawOcrText      String?
+  drugsDetected   String[]
+  submittedAt     DateTime     @default(now())
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+
+  @@map("prescriptions")
+}
