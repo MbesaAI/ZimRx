@@ -11,7 +11,7 @@ const options = {
     },
     servers: [
       { url: 'http://localhost:3000',          description: 'Local development' },
-      { url: 'https://mbesaai.up.railway.app', description: 'Production (Railway)' },
+      { url: 'https://web-production-ece38.up.railway.app', description: 'Production (Railway)' },
     ],
     tags: [
       { name: 'Webhook',    description: 'WhatsApp Cloud API webhook endpoints' },

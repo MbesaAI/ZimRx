@@ -73,9 +73,8 @@ Keep this URL — you need it for the WhatsApp webhook in Step 5.
 3. Under **Webhook**, click **Edit**
 4. Set **Callback URL** to:
    ```
-   https://mbesaai-production.up.railway.app/webhook
+   https://web-production-ece38.up.railway.app/webhook
    ```
-   *(replace with your actual Railway domain)*
 5. Set **Verify token** to:
    ```
    mbesaai_verify_2026
@@ -100,7 +99,7 @@ Keep this URL — you need it for the WhatsApp webhook in Step 5.
 Open your Railway URL in a browser:
 
 ```
-https://mbesaai-production.up.railway.app/
+https://web-production-ece38.up.railway.app/
 ```
 
 You should see:
@@ -118,7 +117,7 @@ You should see:
 Open Swagger UI to test the API:
 
 ```
-https://mbesaai-production.up.railway.app/api-docs
+https://web-production-ece38.up.railway.app/api-docs
 ```
 
 ---
