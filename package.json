@@ -19,7 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
     "@google-cloud/vision": "^5.3.7",
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "^5.22.0",
     "axios": "^1.18.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -31,6 +31,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
-    "prisma": "^7.8.0"
+    "prisma": "^5.22.0"
   }
 }
