@@ -21,6 +21,14 @@ app.use('/api/explain',    explainRoute);
 app.use('/api/pharmacies', pharmaciesRoute);
 app.use('/api/records',    recordsRoute);
 
+app.get('/debug/webhook', (req, res) => {
+  res.json({
+    query:         req.query,
+    tokenEnvSet:   !!process.env.WEBHOOK_VERIFY_TOKEN,
+    tokenEnvValue: process.env.WEBHOOK_VERIFY_TOKEN,
+  });
+});
+
 app.get('/', (req, res) => {
   res.json({
     service: 'MbesaAI',
