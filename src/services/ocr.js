@@ -1,7 +1,19 @@
 const vision = require('@google-cloud/vision');
-const axios = require('axios');
+const axios  = require('axios');
 
-const client = new vision.ImageAnnotatorClient();
+// On Railway, credentials are stored as a base64 env var instead of a JSON file
+function buildVisionClient() {
+  if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+    const credentials = JSON.parse(
+      Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf8')
+    );
+    return new vision.ImageAnnotatorClient({ credentials });
+  }
+  // Local dev: uses GOOGLE_APPLICATION_CREDENTIALS file path
+  return new vision.ImageAnnotatorClient();
+}
+
+const client = buildVisionClient();
 
 async function getWhatsAppMediaBuffer(mediaId) {
   const urlResponse = await axios.get(
