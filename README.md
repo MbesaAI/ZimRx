@@ -1,4 +1,4 @@
-# MbesaAI 🏥
+# ZimRx 🏥
 
 > **WhatsApp AI Prescription Assistant for Zimbabwe**
 >
@@ -45,11 +45,11 @@ Zimbabwe's 16.8 million citizens face a broken prescription experience every day
 
 ## The Solution
 
-MbesaAI is a WhatsApp chatbot that works on any smartphone — no app download, no registration, no technical literacy required.
+ZimRx is a WhatsApp chatbot that works on any smartphone — no app download, no registration, no technical literacy required.
 
-**Patients send a prescription photo. MbesaAI does the rest.**
+**Patients send a prescription photo. ZimRx does the rest.**
 
-| What the patient needs | What MbesaAI provides |
+| What the patient needs | What ZimRx provides |
 |---|---|
 | Understand what the prescription says | OCR reads the prescription and matches drugs to the MCAZ register |
 | Know what each drug does | Claude AI explains each medication in plain language |
@@ -106,9 +106,9 @@ or Find pharmacy (3)
 ```
 Patient:  [sends photo of prescription]
 
-MbesaAI:  📷 Got your prescription photo. Analysing now...
+ZimRx:    📷 Got your prescription photo. Analysing now...
 
-MbesaAI:  ✅ Prescription detected:
+ZimRx:    ✅ Prescription detected:
           • Amoxicillin (AMOXICILLIN) — 500mg
           • Paracetamol (PARACETAMOL) — 500mg
 
@@ -118,7 +118,7 @@ MbesaAI:  ✅ Prescription detected:
 
 Patient:  2
 
-MbesaAI:  💊 Your medication explained:
+ZimRx:    💊 Your medication explained:
 
           Amoxicillin is an antibiotic used to treat bacterial
           infections such as chest, ear, and throat infections.
@@ -133,11 +133,11 @@ MbesaAI:  💊 Your medication explained:
 
 Patient:  3
 
-MbesaAI:  📍 Please share your location or type your town name.
+ZimRx:    📍 Please share your location or type your town name.
 
 Patient:  [shares WhatsApp location]
 
-MbesaAI:  🏥 Nearest pharmacies to you:
+ZimRx:    🏥 Nearest pharmacies to you:
 
           1. Divine Pharmacy - Mabelreign
              📍 1&2 Stortford Parade, Harare
@@ -170,7 +170,7 @@ MbesaAI:  🏥 Nearest pharmacies to you:
                             │ POST /webhook
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  MbesaAI Express API                        │
+│                    ZimRx Express API                        │
 │                  Hosted on Railway                          │
 │                                                             │
 │  ┌─────────────┐  ┌───────────┐  ┌──────────────────────┐  │
@@ -254,7 +254,7 @@ MbesaAI:  🏥 Nearest pharmacies to you:
 
 ## Data Sources
 
-MbesaAI is built on two official government datasets from the Medicines Control Authority of Zimbabwe (MCAZ), sourced from [onlineservices.mcaz.co.zw](https://onlineservices.mcaz.co.zw/onlineregister).
+ZimRx is built on two official government datasets from the Medicines Control Authority of Zimbabwe (MCAZ), sourced from [onlineservices.mcaz.co.zw](https://onlineservices.mcaz.co.zw/onlineregister).
 
 ### Medicines Register
 - **3,086 registered medicines**
@@ -343,7 +343,7 @@ Content-Type: application/json
 ## Project Structure
 
 ```
-mbesaai/
+zimrx/
 │
 ├── src/
 │   ├── routes/
@@ -403,8 +403,8 @@ mbesaai/
 ### Clone and install
 
 ```bash
-git clone https://github.com/Towernter/MbesaAI.git
-cd MbesaAI
+git clone https://github.com/Towernter/ZimRx.git
+cd ZimRx
 npm install
 ```
 
@@ -487,7 +487,7 @@ NODE_ENV=development
 
 ## Deployment
 
-MbesaAI is deployed on [Railway](https://railway.app) with automatic deployments from GitHub.
+ZimRx is deployed on [Railway](https://railway.app) with automatic deployments from GitHub.
 
 ### Deploy your own instance
 
@@ -650,4 +650,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*MbesaAI — Because every Zimbabwean deserves to understand their own prescription.*
+*ZimRx — Because every Zimbabwean deserves to understand their own prescription.*

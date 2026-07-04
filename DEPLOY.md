@@ -1,4 +1,4 @@
-# MbesaAI — Railway Deployment Guide
+# ZimRx — Railway Deployment Guide
 
 ---
 
@@ -29,7 +29,7 @@ Copy the long string it prints — you will paste it in Step 3.
 
 1. Go to [railway.app](https://railway.app) and sign in with GitHub
 2. Click **New Project → Deploy from GitHub repo**
-3. Select **Towernter/MbesaAI**
+3. Select **Towernter/ZimRx**
 4. Railway detects Node.js and starts building automatically
 
 ---
@@ -59,7 +59,7 @@ Railway automatically redeploys when you save new variables.
 2. Click **Generate Domain**
 3. You will get a permanent URL like:
    ```
-   https://mbesaai-production.up.railway.app
+   https://zimrx-production.up.railway.app
    ```
 
 Keep this URL — you need it for the WhatsApp webhook in Step 5.
@@ -68,7 +68,7 @@ Keep this URL — you need it for the WhatsApp webhook in Step 5.
 
 ## Step 5 — Register the Webhook with Meta
 
-1. Go to [developers.facebook.com](https://developers.facebook.com) → your **MbesaAI** app
+1. Go to [developers.facebook.com](https://developers.facebook.com) → your **ZimRx** app
 2. In the left menu, go to **WhatsApp → Configuration**
 3. Under **Webhook**, click **Edit**
 4. Set **Callback URL** to:
@@ -106,7 +106,7 @@ You should see:
 
 ```json
 {
-  "service": "MbesaAI",
+  "service": "ZimRx",
   "status": "running",
   "version": "1.0.0",
   "docs": "/api-docs",

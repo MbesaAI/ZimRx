@@ -4,10 +4,10 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title:       'MbesaAI API',
+      title:       'ZimRx API',
       version:     '1.0.0',
       description: 'WhatsApp AI Prescription Assistant for Zimbabwe — POTRAZ AI4I 2026',
-      contact:     { name: 'MbesaAI Team' }
+      contact:     { name: 'ZimRx Team' }
     },
     servers: [
       { url: 'http://localhost:3000',          description: 'Local development' },

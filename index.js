@@ -23,7 +23,7 @@ app.use('/api/records',    recordsRoute);
 
 app.get('/', (req, res) => {
   res.json({
-    service: 'MbesaAI',
+    service: 'ZimRx',
     status:  'running',
     version: '1.0.0',
     docs:    '/api-docs',
@@ -33,6 +33,6 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\nMbesaAI running on port ${PORT}`);
+  console.log(`\nZimRx running on port ${PORT}`);
   console.log(`Swagger docs → http://localhost:${PORT}/api-docs\n`);
 });

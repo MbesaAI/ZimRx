@@ -11,7 +11,7 @@ const STATES = {
   AWAITING_LOCATION: 'AWAITING_LOCATION',
 };
 
-const MENU = `Welcome to *MbesaAI* 🏥\n\nI can help you with your prescription. What would you like?\n\n*1* — 📋 Translate my prescription\n*2* — 💊 Explain my medication\n*3* — 🗺️ Find nearest pharmacy\n*4* — 📁 Retrieve my last prescription\n\nOr send a *photo* of your prescription to get started.`;
+const MENU = `Welcome to *ZimRx* 🏥\n\nI can help you with your prescription. What would you like?\n\n*1* — 📋 Translate my prescription\n*2* — 💊 Explain my medication\n*3* — 🗺️ Find nearest pharmacy\n*4* — 📁 Retrieve my last prescription\n\nOr send a *photo* of your prescription to get started.`;
 
 async function getOrCreateConversation(waId) {
   return prisma.conversation.upsert({
