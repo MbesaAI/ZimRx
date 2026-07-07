@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZimRx — MCAZ Analytics Portal</title>
+  <title>ZimRx — Analytics Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,21 +60,6 @@
 
     /* ── Main layout ── */
     main { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
-
-    /* ── Privacy banner ── */
-    .privacy-banner {
-      background: #EBF8FF;
-      border: 1px solid #BEE3F8;
-      border-left: 4px solid #3182CE;
-      border-radius: var(--radius);
-      padding: .75rem 1rem;
-      font-size: .82rem;
-      color: #2C5282;
-      margin-bottom: 2rem;
-      display: flex;
-      align-items: center;
-      gap: .6rem;
-    }
 
     /* ── Section title ── */
     .section-title {
@@ -187,7 +172,7 @@
   <div class="header-left">
     <div>
       <div class="logo">Zim<span>Rx</span></div>
-      <div class="subtitle">MCAZ Analytics Portal</div>
+      <div class="subtitle">Analytics Portal</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:1rem;">
@@ -197,11 +182,6 @@
 </header>
 
 <main>
-
-  <div class="privacy-banner">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    <span><strong>Data Protection:</strong> Patient identity is not collected or displayed. This dashboard shows medicine movement and prescription query patterns only. Compliant with the Zimbabwe Data Protection Act, 2021.</span>
-  </div>
 
   <!-- KPI Cards -->
   <p class="section-title">Key Metrics</p>
@@ -244,7 +224,7 @@
   <div class="chart-grid" style="margin-bottom:1.25rem;">
     <div class="card">
       <div class="card-title">Top Medicines by Query Volume</div>
-      <div class="card-desc">Most-queried drugs from the MCAZ register</div>
+      <div class="card-desc">Most-queried drugs</div>
       <div class="chart-wrap tall">
         <div class="loading" id="loading-medicines"><div class="spinner"></div> Loading…</div>
         <canvas id="chart-medicines" style="display:none;"></canvas>
@@ -272,7 +252,7 @@
     </div>
     <div class="card">
       <div class="card-title">Queries by Medicine Category</div>
-      <div class="card-desc">Breakdown by MCAZ schedule / distribution category</div>
+      <div class="card-desc">Breakdown by schedule / distribution category</div>
       <div class="chart-wrap tall">
         <div class="loading" id="loading-categories"><div class="spinner"></div> Loading…</div>
         <canvas id="chart-categories" style="display:none;"></canvas>
@@ -283,7 +263,7 @@
 </main>
 
 <footer>
-  ZimRx &mdash; MCAZ Analytics Portal &mdash; Data shown is aggregated and anonymised &mdash; No patient identifiers are stored or displayed
+  ZimRx &mdash; Analytics Portal
 </footer>
 
 <script>
@@ -528,7 +508,7 @@
         return;
       }
 
-      // Shorten long MCAZ category names for display
+      // Shorten long category names for display
       const shorten = s => s
         .replace('PRESCRIPTION PREPARATIONS', 'Rx')
         .replace('PHARMACIST INITIATED MEDICINES', 'PIM')
