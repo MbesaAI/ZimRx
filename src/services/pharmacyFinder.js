@@ -1,23 +1,37 @@
 const prisma = require('../db/client');
 const axios  = require('axios');
 
+const NOMINATIM_HEADERS = { 'User-Agent': 'ZimRx/1.0 (prescription-assistant; contact@zimrx.app)' };
+
 async function geocodeAddress(query) {
   try {
     const res = await axios.get('https://nominatim.openstreetmap.org/search', {
-      params: {
-        q:            `${query}, Zimbabwe`,
-        countrycodes: 'zw',
-        format:       'json',
-        limit:        1,
-        addressdetails: 0,
-      },
-      headers: { 'User-Agent': 'ZimRx/1.0 (prescription-assistant; contact@zimrx.app)' },
+      params: { q: `${query}, Zimbabwe`, countrycodes: 'zw', format: 'json', limit: 1, addressdetails: 1 },
+      headers: NOMINATIM_HEADERS,
       timeout: 6000,
     });
     if (res.data && res.data.length > 0) {
-      return { lat: parseFloat(res.data[0].lat), lon: parseFloat(res.data[0].lon), displayName: res.data[0].display_name };
+      const hit = res.data[0];
+      const addr = hit.address || {};
+      // Extract best available town name from address details
+      const town = addr.city || addr.town || addr.village || addr.suburb || addr.county || null;
+      return { lat: parseFloat(hit.lat), lon: parseFloat(hit.lon), town };
     }
     return null;
+  } catch {
+    return null;
+  }
+}
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+      params: { lat, lon, format: 'json', addressdetails: 1 },
+      headers: NOMINATIM_HEADERS,
+      timeout: 6000,
+    });
+    const addr = res.data?.address || {};
+    return addr.city || addr.town || addr.village || addr.suburb || addr.county || null;
   } catch {
     return null;
   }
@@ -44,7 +58,8 @@ const PHARMACY_TYPES = [
 ];
 
 async function findNearestPharmacies(latitude, longitude, limit = 3) {
-  const pharmacies = await prisma.pharmacy.findMany({
+  // Try pharmacies that have coordinates stored (future-proof if data improves)
+  const withCoords = await prisma.pharmacy.findMany({
     where: {
       premisesType: { in: PHARMACY_TYPES },
       latitude:     { not: null },
@@ -52,20 +67,21 @@ async function findNearestPharmacies(latitude, longitude, limit = 3) {
     }
   });
 
-  if (pharmacies.length === 0) {
-    return prisma.pharmacy.findMany({
-      where: { premisesType: { in: PHARMACY_TYPES } },
-      take: limit
-    });
+  if (withCoords.length > 0) {
+    return withCoords
+      .map(p => ({ ...p, distanceKm: haversineKm(latitude, longitude, p.latitude, p.longitude) }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, limit);
   }
 
-  return pharmacies
-    .map(p => ({
-      ...p,
-      distanceKm: haversineKm(latitude, longitude, p.latitude, p.longitude)
-    }))
-    .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, limit);
+  // MCAZ register has no GPS data — reverse-geocode to get the town name
+  const town = await reverseGeocode(latitude, longitude);
+  if (town) {
+    const byTown = await findPharmaciesByTown(town, limit);
+    if (byTown.length > 0) return byTown;
+  }
+
+  return [];
 }
 
 async function findPharmaciesByTown(town, limit = 5) {
@@ -78,4 +94,4 @@ async function findPharmaciesByTown(town, limit = 5) {
   });
 }
 
-module.exports = { findNearestPharmacies, findPharmaciesByTown, geocodeAddress };
+module.exports = { findNearestPharmacies, findPharmaciesByTown, geocodeAddress, reverseGeocode };

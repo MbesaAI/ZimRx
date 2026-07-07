@@ -263,12 +263,16 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       await send(from, m.FINDING_PHARMACIES);
       const geo = await geocodeAddress(text);
       if (geo) {
-        const pharmacies = await findNearestPharmacies(geo.lat, geo.lon, 3);
+        // Use the town extracted from geocoding directly; avoids a second reverse-geocode call
+        const pharmacies = geo.town
+          ? await findPharmaciesByTown(geo.town, 3)
+          : await findNearestPharmacies(geo.lat, geo.lon, 3);
         if (pharmacies.length > 0) {
+          const resolvedTown = geo.town || text;
           const list = pharmacies.map((p, i) =>
-            `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}${p.distanceKm ? `\n📏 ${p.distanceKm.toFixed(1)} km away` : ''}`
+            `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}`
           ).join('\n\n');
-          await send(from, m.nearestPharmacies(list));
+          await send(from, m.townPharmacies(resolvedTown, list));
           await transitionTo(from, STATES.IDLE);
           return;
         }
