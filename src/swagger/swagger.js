@@ -10,8 +10,8 @@ const options = {
       contact:     { name: 'ZimRx Team' }
     },
     servers: [
-      { url: 'http://localhost:3000',          description: 'Local development' },
       { url: 'https://web-production-ece38.up.railway.app', description: 'Production (Railway)' },
+      { url: 'http://localhost:3000',          description: 'Local development' },
     ],
     tags: [
       { name: 'Webhook',    description: 'WhatsApp Cloud API webhook endpoints' },

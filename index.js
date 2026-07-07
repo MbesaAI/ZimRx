@@ -27,13 +27,7 @@ app.use('/admin',          adminAuth, adminRoute);
 app.use('/demo',           demoRoute);
 
 app.get('/', (req, res) => {
-  res.json({
-    service: 'ZimRx',
-    status:  'running',
-    version: '1.0.0',
-    docs:    '/api-docs',
-    purpose: 'WhatsApp prescription assistant for Zimbabwe'
-  });
+  res.redirect('/demo');
 });
 
 const PORT = process.env.PORT || 3000;
