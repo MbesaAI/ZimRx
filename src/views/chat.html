@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ZimRx — Demo Chat</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:#111b21;
+  font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  padding:16px;
+}
+
+.frame{
+  width:420px;
+  height:720px;
+  display:flex;
+  flex-direction:column;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+  position:relative;
+}
+
+/* ── Header ── */
+.header{
+  background:#202c33;
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-shrink:0;
+  z-index:10;
+}
+.avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:#00a884;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;color:#fff;flex-shrink:0;
+}
+.hinfo{flex:1;min-width:0}
+.hname{color:#e9edef;font-size:15px;font-weight:600}
+.hstatus{color:#8696a0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hactions{display:flex;gap:18px;align-items:center}
+.hbtn{
+  background:none;border:none;cursor:pointer;
+  color:#aebac1;font-size:19px;padding:2px;
+  border-radius:50%;width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.hbtn:hover{background:#2a3942;color:#e9edef}
+
+/* ── Chat area ── */
+.chat{
+  flex:1;overflow-y:auto;
+  padding:12px 12px 8px;
+  background:#0b141a;
+  display:flex;flex-direction:column;gap:2px;
+  scroll-behavior:smooth;
+}
+.chat::-webkit-scrollbar{width:5px}
+.chat::-webkit-scrollbar-thumb{background:#374045;border-radius:3px}
+
+/* WhatsApp subtle dot background */
+.chat{
+  background-color:#0b141a;
+  background-image:radial-gradient(circle,#1a2a32 1px,transparent 1px);
+  background-size:20px 20px;
+}
+
+.date-sep{
+  align-self:center;
+  background:#182229;
+  color:#8696a0;font-size:11.5px;
+  padding:4px 12px;border-radius:8px;
+  margin:8px 0;
+}
+
+/* ── Message bubbles ── */
+.msg{display:flex;flex-direction:column;max-width:78%;margin:2px 0}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end}
+
+.bubble{
+  padding:7px 10px 5px;
+  border-radius:8px;
+  font-size:14.5px;line-height:1.45;
+  word-wrap:break-word;white-space:pre-wrap;
+  position:relative;
+}
+.msg.bot .bubble{
+  background:#202c33;color:#e9edef;
+  border-top-left-radius:0;
+}
+.msg.user .bubble{
+  background:#005c4b;color:#e9edef;
+  border-top-right-radius:0;
+}
+.bubble strong{font-weight:600}
+.bubble img{max-width:220px;border-radius:6px;display:block;margin-bottom:2px}
+
+.ts{
+  font-size:11px;color:#8696a0;
+  align-self:flex-end;padding:0 2px;margin-top:1px;
+}
+.msg.user .ts::after{content:' ✓✓';color:#53bdeb}
+
+/* ── Quick-reply buttons ── */
+.qr-wrap{
+  align-self:flex-start;
+  display:flex;flex-direction:column;gap:3px;
+  margin:4px 0 6px;
+  max-width:340px;
+}
+.qr-btn{
+  background:#182229;
+  color:#00a884;
+  border:1px solid #2a3942;
+  border-left:3px solid #00a884;
+  border-radius:6px;
+  padding:8px 14px;
+  text-align:left;
+  cursor:pointer;
+  font-size:13.5px;
+  font-family:inherit;
+  transition:background .12s;
+}
+.qr-btn:hover{background:#1f2c34;color:#25d366}
+
+/* ── Typing indicator ── */
+.typing{
+  align-self:flex-start;
+  background:#202c33;
+  border-radius:8px;border-top-left-radius:0;
+  padding:10px 14px;
+  display:none;gap:4px;align-items:center;margin:4px 0;
+}
+.typing.on{display:flex}
+.dot{
+  width:7px;height:7px;background:#8696a0;border-radius:50%;
+  animation:bob 1.2s infinite;
+}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes bob{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* ── Image preview bar ── */
+.img-preview{
+  background:#1a2c34;
+  border-top:1px solid #2a3942;
+  padding:10px 16px;
+  display:none;align-items:center;gap:12px;flex-shrink:0;
+}
+.img-preview.on{display:flex}
+.img-preview img{height:48px;width:48px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.img-preview .pname{color:#e9edef;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.img-preview .pclose{
+  color:#8696a0;cursor:pointer;font-size:20px;
+  background:none;border:none;padding:0 4px;
+}
+.img-preview .pclose:hover{color:#e9edef}
+
+/* ── Input bar ── */
+.input-bar{
+  background:#202c33;
+  padding:8px 12px;
+  display:flex;align-items:flex-end;gap:8px;
+  flex-shrink:0;
+}
+.input-wrap{
+  flex:1;
+  background:#2a3942;
+  border-radius:24px;
+  padding:8px 14px;
+  display:flex;align-items:center;gap:8px;
+  min-height:44px;
+}
+#msgInput{
+  flex:1;background:none;border:none;outline:none;
+  color:#e9edef;font-size:14.5px;font-family:inherit;
+  resize:none;max-height:120px;line-height:1.4;
+}
+#msgInput::placeholder{color:#8696a0}
+.icon-btn{
+  background:none;border:none;cursor:pointer;
+  color:#8696a0;font-size:20px;padding:2px;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .15s;flex-shrink:0;
+}
+.icon-btn:hover{color:#e9edef}
+
+.send-btn{
+  width:46px;height:46px;border-radius:50%;
+  background:#00a884;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .15s;
+}
+.send-btn:hover{background:#25d366}
+.send-btn svg{width:22px;height:22px;fill:#fff}
+
+/* ── Responsive ── */
+@media(max-width:460px){
+  body{padding:0;align-items:stretch}
+  .frame{width:100%;height:100vh;border-radius:0}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="avatar">Rx</div>
+    <div class="hinfo">
+      <div class="hname">ZimRx</div>
+      <div class="hstatus">Prescription Assistant · typically replies instantly</div>
+    </div>
+    <div class="hactions">
+      <button class="hbtn" title="Reset conversation" onclick="resetChat()">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M17.65 6.35A7.958 7.958 0 0012 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Chat messages -->
+  <div class="chat" id="chat">
+    <div class="date-sep" id="dateSep">TODAY</div>
+    <div class="typing" id="typing">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+  </div>
+
+  <!-- Image preview bar (shown when user picks a file) -->
+  <div class="img-preview" id="imgPreview">
+    <img id="previewImg" src="" alt="">
+    <span class="pname" id="previewName"></span>
+    <button class="pclose" onclick="clearImage()" title="Remove">✕</button>
+  </div>
+
+  <!-- Input bar -->
+  <div class="input-bar">
+    <div class="input-wrap">
+      <label class="icon-btn" title="Attach prescription photo">
+        📎
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="onFileSelect(event)">
+      </label>
+      <textarea id="msgInput" rows="1" placeholder="Type a message"
+        oninput="autoResize(this)"
+        onkeydown="onKeyDown(event)"></textarea>
+    </div>
+    <button class="send-btn" onclick="onSend()" title="Send">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ── Session ────────────────────────────────────────────────────────────────
+let sessionId = localStorage.getItem('zimrx_session_id');
+if (!sessionId) {
+  sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  localStorage.setItem('zimrx_session_id', sessionId);
+}
+
+let pendingImage = null; // { dataUrl, name }
+let isSending    = false;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function now() {
+  return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatMsg(raw) {
+  return escHtml(raw)
+    .replace(/\*([^*\n]+)\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+// Detect lines like "*1* — label" or "*1* - label" and return button specs
+function extractReplies(text) {
+  const lines = text.split('\n');
+  const hits  = [];
+  const re    = /^\*(\d+)\*\s*[—\-]\s*(.+)$/;
+  lines.forEach(l => {
+    const m = l.trim().match(re);
+    if (m) hits.push({ val: m[1], label: m[2].trim() });
+  });
+  return hits;
+}
+
+// ── DOM helpers ────────────────────────────────────────────────────────────
+const chat   = document.getElementById('chat');
+const typing = document.getElementById('typing');
+
+function scrollBottom() {
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping()  { typing.classList.add('on');  scrollBottom(); }
+function hideTyping()  { typing.classList.remove('on'); }
+
+function insertBeforeTyping(el) {
+  chat.insertBefore(el, typing);
+  scrollBottom();
+}
+
+function addBotMessage(text) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  wrapper.innerHTML =
+    `<div class="bubble">${formatMsg(text)}</div>` +
+    `<div class="ts">${now()}</div>`;
+  insertBeforeTyping(wrapper);
+
+  // Quick-reply buttons
+  const replies = extractReplies(text);
+  if (replies.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-wrap';
+    replies.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'qr-btn';
+      btn.innerHTML = escHtml(r.label);
+      btn.onclick = () => {
+        wrap.remove();            // remove buttons once tapped
+        sendText(r.val);
+      };
+      wrap.appendChild(btn);
+    });
+    insertBeforeTyping(wrap);
+  }
+}
+
+function addUserText(text) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg user';
+  wrapper.innerHTML =
+    `<div class="bubble">${formatMsg(text)}</div>` +
+    `<div class="ts">${now()}</div>`;
+  insertBeforeTyping(wrapper);
+}
+
+function addUserImage(dataUrl) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg user';
+  wrapper.innerHTML =
+    `<div class="bubble"><img src="${dataUrl}" alt="Prescription photo"></div>` +
+    `<div class="ts">${now()}</div>`;
+  insertBeforeTyping(wrapper);
+}
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function callAPI(payload) {
+  if (isSending) return;
+  isSending = true;
+  showTyping();
+  try {
+    const res  = await fetch('/demo/message', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ sessionId, ...payload })
+    });
+    const data = await res.json();
+    hideTyping();
+    (data.responses || []).forEach(addBotMessage);
+  } catch (e) {
+    hideTyping();
+    addBotMessage('❌ Could not reach the server. Is it running?');
+  } finally {
+    isSending = false;
+  }
+}
+
+async function sendText(text) {
+  const t = (text || '').trim();
+  if (!t) return;
+  addUserText(t);
+  await callAPI({ type: 'text', body: t });
+}
+
+// ── Input handlers ─────────────────────────────────────────────────────────
+async function onSend() {
+  if (pendingImage) {
+    const img = pendingImage;
+    clearImage();
+    addUserImage(img.dataUrl);
+    await callAPI({ type: 'image', imageBase64: img.dataUrl });
+    return;
+  }
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+  await sendText(text);
+}
+
+function onKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    onSend();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── Image picker ───────────────────────────────────────────────────────────
+function onFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingImage = { dataUrl: ev.target.result, name: file.name };
+    document.getElementById('previewImg').src  = ev.target.result;
+    document.getElementById('previewName').textContent = file.name;
+    document.getElementById('imgPreview').classList.add('on');
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function clearImage() {
+  pendingImage = null;
+  document.getElementById('imgPreview').classList.remove('on');
+  document.getElementById('previewImg').src = '';
+}
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+async function resetChat() {
+  // Clear UI
+  const sep   = document.getElementById('dateSep');
+  chat.innerHTML = '';
+  chat.appendChild(sep);
+  chat.appendChild(typing);
+  clearImage();
+  document.getElementById('msgInput').value = '';
+
+  // New session → fresh conversation record in DB
+  sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  localStorage.setItem('zimrx_session_id', sessionId);
+
+  await callAPI({ type: 'text', body: 'hi' });
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  callAPI({ type: 'text', body: 'hi' });
+});
+</script>
+</body>
+</html>

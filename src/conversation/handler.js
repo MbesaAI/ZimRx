@@ -1,5 +1,5 @@
 const { sendMessage } = require('../services/whatsapp');
-const { extractTextFromImage } = require('../services/ocr');
+const { extractTextFromImage, extractTextFromBuffer } = require('../services/ocr');
 const { lookupDrugs } = require('../services/drugLookup');
 const { explainDrugs } = require('../services/llm');
 const { findNearestPharmacies, findPharmaciesByTown } = require('../services/pharmacyFinder');
@@ -52,13 +52,16 @@ async function recordFulfillment(prescriptionId, fulfillmentStatus, fulfilled) {
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────
+// sendFn: optional override for sendMessage — used by the demo chat UI to
+// collect responses instead of pushing them to WhatsApp.
 
-async function handleIncomingMessage(from, type, message) {
+async function handleIncomingMessage(from, type, message, sendFn) {
+  const send = sendFn || sendMessage;
+
   const conversation = await getOrCreateConversation(from);
   const { state, id: conversationId, pendingPrescriptionId, language } = conversation;
 
   // ── LANGUAGE SELECTION ─────────────────────────────────────────────────────
-  // If no language has been chosen yet, gate everything behind language selection.
   if (!language) {
     if (state === STATES.AWAITING_LANGUAGE && type === 'text') {
       const text = message.text.body.trim();
@@ -66,13 +69,12 @@ async function handleIncomingMessage(from, type, message) {
       if (selected) {
         await setLanguage(from, selected);
         const m = getMessages(selected);
-        await sendMessage(from, m.LANGUAGE_CHANGED);
-        await sendMessage(from, m.MENU);
+        await send(from, m.LANGUAGE_CHANGED);
+        await send(from, m.MENU);
         return;
       }
     }
-    // Show trilingual language menu and wait
-    await sendMessage(from, LANGUAGE_MENU);
+    await send(from, LANGUAGE_MENU);
     await transitionTo(from, STATES.AWAITING_LANGUAGE);
     return;
   }
@@ -81,13 +83,17 @@ async function handleIncomingMessage(from, type, message) {
 
   // ── IMAGE ──────────────────────────────────────────────────────────────────
   if (type === 'image') {
-    const mediaId = message.image.id;
-    await sendMessage(from, m.SCANNING);
+    const mediaId = message.image?.id;
+    const buffer  = message.image?._buffer; // set by demo route for direct uploads
 
-    const ocrText = await extractTextFromImage(mediaId);
+    await send(from, m.SCANNING);
+
+    const ocrText = buffer
+      ? await extractTextFromBuffer(buffer)
+      : await extractTextFromImage(mediaId);
 
     if (!ocrText) {
-      await sendMessage(from, m.OCR_FAIL);
+      await send(from, m.OCR_FAIL);
       return;
     }
 
@@ -102,7 +108,7 @@ async function handleIncomingMessage(from, type, message) {
     });
 
     if (drugs.length === 0) {
-      await sendMessage(from, m.NO_DRUGS);
+      await send(from, m.NO_DRUGS);
       return;
     }
 
@@ -110,8 +116,8 @@ async function handleIncomingMessage(from, type, message) {
       .map(d => `• *${d.tradeName || d.genericName}* (${d.genericName}) — ${d.strength || 'see label'}`)
       .join('\n');
 
-    await sendMessage(from, m.prescriptionDetected(drugList));
-    await sendMessage(from, m.FULFILLMENT_PROMPT);
+    await send(from, m.prescriptionDetected(drugList));
+    await send(from, m.FULFILLMENT_PROMPT);
     await transitionTo(from, STATES.AWAITING_FULFILLMENT, prescription.id);
     return;
   }
@@ -119,12 +125,12 @@ async function handleIncomingMessage(from, type, message) {
   // ── LOCATION ───────────────────────────────────────────────────────────────
   if (type === 'location' && state === STATES.AWAITING_LOCATION) {
     const { latitude, longitude } = message.location;
-    await sendMessage(from, m.FINDING_PHARMACIES);
+    await send(from, m.FINDING_PHARMACIES);
 
     const pharmacies = await findNearestPharmacies(latitude, longitude, 3);
 
     if (pharmacies.length === 0) {
-      await sendMessage(from, m.NO_PHARMACIES);
+      await send(from, m.NO_PHARMACIES);
       await transitionTo(from, STATES.IDLE);
       return;
     }
@@ -133,7 +139,7 @@ async function handleIncomingMessage(from, type, message) {
       `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}${p.distanceKm ? `\n📏 ${p.distanceKm.toFixed(1)} km away` : ''}`
     ).join('\n\n');
 
-    await sendMessage(from, m.nearestPharmacies(list));
+    await send(from, m.nearestPharmacies(list));
     await transitionTo(from, STATES.IDLE);
     return;
   }
@@ -143,14 +149,14 @@ async function handleIncomingMessage(from, type, message) {
     const text  = message.text.body.trim();
     const lower = text.toLowerCase();
 
-    // ── Language change — reply 0 or keyword ─────────────────────────────────
+    // ── Language change ───────────────────────────────────────────────────────
     if (text === '0' || lower === 'language' || lower === 'change language' ||
         lower === 'shandura mutauro' || lower === 'shintsha ulimi') {
       await prisma.conversation.update({
         where: { waId: from },
         data:  { language: null, state: STATES.AWAITING_LANGUAGE }
       });
-      await sendMessage(from, LANGUAGE_MENU);
+      await send(from, LANGUAGE_MENU);
       return;
     }
 
@@ -176,32 +182,30 @@ async function handleIncomingMessage(from, type, message) {
       if (isYes) {
         if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'YES', true);
         await transitionTo(from, STATES.AWAITING_CHOICE, null);
-        await sendMessage(from, m.FULFILLMENT_YES);
+        await send(from, m.FULFILLMENT_YES);
         return;
       }
-
       if (isNo) {
         if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'NO', false);
         await transitionTo(from, STATES.AWAITING_CHOICE, null);
-        await sendMessage(from, m.FULFILLMENT_NO);
+        await send(from, m.FULFILLMENT_NO);
         return;
       }
-
       if (isLooking) {
         if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'STILL_LOOKING', false);
         await transitionTo(from, STATES.AWAITING_CHOICE, null);
-        await sendMessage(from, m.FULFILLMENT_LOOKING);
+        await send(from, m.FULFILLMENT_LOOKING);
         return;
       }
 
-      await sendMessage(from, m.fulfillmentReprompt(m.FULFILLMENT_PROMPT));
+      await send(from, m.fulfillmentReprompt(m.FULFILLMENT_PROMPT));
       return;
     }
 
     // ── Option 1 — Translate ─────────────────────────────────────────────────
     if (text === '1' || lower.includes('translate') || lower.includes('read prescription') ||
         lower.includes('verenga') || lower.includes('funda')) {
-      await sendMessage(from, m.SEND_PHOTO);
+      await send(from, m.SEND_PHOTO);
       return;
     }
 
@@ -210,12 +214,12 @@ async function handleIncomingMessage(from, type, message) {
         lower.includes('tsanangura') || lower.includes('chaza')) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx || lastRx.drugsDetected.length === 0) {
-        await sendMessage(from, m.NO_PRESCRIPTION_YET);
+        await send(from, m.NO_PRESCRIPTION_YET);
         return;
       }
-      await sendMessage(from, m.LOOKING_UP);
+      await send(from, m.LOOKING_UP);
       const explanation = await explainDrugs(lastRx.drugsDetected, language);
-      await sendMessage(from, m.medicationExplained(explanation));
+      await send(from, m.medicationExplained(explanation));
       await transitionTo(from, STATES.IDLE);
       return;
     }
@@ -223,7 +227,7 @@ async function handleIncomingMessage(from, type, message) {
     // ── Option 3 — Find pharmacy ─────────────────────────────────────────────
     if (text === '3' || lower.includes('pharmacy') || lower.includes('find') ||
         lower.includes('tsvaga') || lower.includes('thola') || lower.includes('chemist')) {
-      await sendMessage(from, m.SHARE_LOCATION);
+      await send(from, m.SHARE_LOCATION);
       await transitionTo(from, STATES.AWAITING_LOCATION);
       return;
     }
@@ -233,12 +237,12 @@ async function handleIncomingMessage(from, type, message) {
         lower.includes('bvisa') || lower.includes('landa')) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx) {
-        await sendMessage(from, m.NO_RECORD);
+        await send(from, m.NO_RECORD);
         return;
       }
       const drugs = lastRx.drugsDetected.join(', ');
       const date  = lastRx.submittedAt.toLocaleDateString('en-GB');
-      await sendMessage(from, m.lastPrescription(date, drugs));
+      await send(from, m.lastPrescription(date, drugs));
       return;
     }
 
@@ -249,20 +253,20 @@ async function handleIncomingMessage(from, type, message) {
         const list = pharmacies.map((p, i) =>
           `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}`
         ).join('\n\n');
-        await sendMessage(from, m.townPharmacies(text, list));
+        await send(from, m.townPharmacies(text, list));
         await transitionTo(from, STATES.IDLE);
         return;
       }
     }
 
     // ── Default — show menu ──────────────────────────────────────────────────
-    await sendMessage(from, m.MENU);
+    await send(from, m.MENU);
     await transitionTo(from, STATES.IDLE);
     return;
   }
 
-  // Fallback for other message types (audio, video, etc.)
-  await sendMessage(from, m.MENU);
+  // Fallback for other message types
+  await send(from, m.MENU);
 }
 
 module.exports = { handleIncomingMessage };

@@ -30,18 +30,11 @@ async function getWhatsAppMediaBuffer(mediaId) {
   return Buffer.from(imageResponse.data);
 }
 
-async function extractTextFromImage(mediaId) {
+async function extractTextFromBuffer(imageBuffer) {
   try {
-    const imageBuffer = await getWhatsAppMediaBuffer(mediaId);
-
-    const [result] = await client.textDetection({
-      image: { content: imageBuffer }
-    });
-
+    const [result] = await client.textDetection({ image: { content: imageBuffer } });
     const detections = result.textAnnotations;
-    if (detections && detections.length > 0) {
-      return detections[0].description;
-    }
+    if (detections && detections.length > 0) return detections[0].description;
     return '';
   } catch (error) {
     console.error('OCR error:', error.message);
@@ -49,4 +42,14 @@ async function extractTextFromImage(mediaId) {
   }
 }
 
-module.exports = { extractTextFromImage };
+async function extractTextFromImage(mediaId) {
+  try {
+    const imageBuffer = await getWhatsAppMediaBuffer(mediaId);
+    return extractTextFromBuffer(imageBuffer);
+  } catch (error) {
+    console.error('OCR error:', error.message);
+    return '';
+  }
+}
+
+module.exports = { extractTextFromImage, extractTextFromBuffer };

@@ -11,10 +11,11 @@ const pharmaciesRoute = require('./src/routes/pharmacies');
 const recordsRoute    = require('./src/routes/records');
 const adminRoute      = require('./src/routes/admin');
 const adminAuth       = require('./src/middleware/adminAuth');
+const demoRoute       = require('./src/routes/demo');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // 10 MB to handle base64 prescription images
 
 app.use('/api-docs',       swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/webhook',        webhookRoute);
@@ -23,6 +24,7 @@ app.use('/api/explain',    explainRoute);
 app.use('/api/pharmacies', pharmaciesRoute);
 app.use('/api/records',    recordsRoute);
 app.use('/admin',          adminAuth, adminRoute);
+app.use('/demo',           demoRoute);
 
 app.get('/', (req, res) => {
   res.json({
