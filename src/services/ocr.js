@@ -31,9 +31,10 @@ async function extractTextFromBuffer(imageBuffer) {
 
 Return valid JSON with exactly two fields:
 1. "rawText": all text visible on the prescription
-2. "medications": an array of ONLY the drug/medication names being prescribed — exclude patient name, doctor name, clinic, dates, instructions, and dosage schedules
+2. "medications": an array of ONLY the drug/active ingredient names being prescribed — just the name, no dosage numbers, no form (tablet/capsule/syrup), no instructions
 
-Example: {"rawText": "Dr J Smith\\nRx: Amoxicillin 500mg...", "medications": ["Amoxicillin 500mg", "Paracetamol 500mg"]}
+Example: {"rawText": "Dr J Smith\\nRx: Amoxicillin 250mg tabs...", "medications": ["Amoxicillin"]}
+Compound drugs example: {"rawText": "...", "medications": ["Co-Amoxiclav", "Metformin"]}
 
 Respond with only the JSON object, no other text.`,
           },

@@ -3,24 +3,34 @@ const prisma = require('../db/client');
 async function lookupDrugs(input) {
   if (!input || (typeof input === 'string' && input.trim() === '') || (Array.isArray(input) && input.length === 0)) return [];
 
-  // Accept an array of extracted drug names (preferred) or a raw OCR text string (fallback)
-  const source = Array.isArray(input) ? input.join('\n') : input;
-  const words = [...new Set(
-    source
-      .split(/[\s\n,;:\/\(\)]+/)
-      .map(w => w.trim())
-      .filter(w => w.length >= 4)
-  )];
+  let conditions;
 
-  if (words.length === 0) return [];
+  if (Array.isArray(input)) {
+    // Structured drug names from Claude — use startsWith for precision, no tokenisation needed
+    const names = [...new Set(input.map(n => n.trim()).filter(n => n.length >= 3))];
+    if (names.length === 0) return [];
+    conditions = names.flatMap(name => ([
+      { genericName: { startsWith: name, mode: 'insensitive' } },
+      { tradeName:   { startsWith: name, mode: 'insensitive' } },
+    ]));
+  } else {
+    // Raw OCR text fallback (used by /api/translate) — tokenise with high length threshold
+    // to avoid short false-positive tokens like "none", "take", "with", "tabs"
+    const words = [...new Set(
+      input
+        .split(/[\s\n,;:\/\(\)\.]+/)
+        .map(w => w.replace(/[^a-zA-Z-]/g, '').trim())
+        .filter(w => w.length >= 6)
+    )];
+    if (words.length === 0) return [];
+    conditions = words.flatMap(word => ([
+      { genericName: { contains: word, mode: 'insensitive' } },
+      { tradeName:   { contains: word, mode: 'insensitive' } },
+    ]));
+  }
 
   const results = await prisma.medicine.findMany({
-    where: {
-      OR: words.flatMap(word => ([
-        { genericName: { contains: word, mode: 'insensitive' } },
-        { tradeName:   { contains: word, mode: 'insensitive' } }
-      ]))
-    },
+    where: { OR: conditions },
     select: {
       id:          true,
       tradeName:   true,
@@ -29,7 +39,7 @@ async function lookupDrugs(input) {
       form:        true,
       category:    true,
     },
-    take: 20
+    take: 20,
   });
 
   const seen = new Set();
