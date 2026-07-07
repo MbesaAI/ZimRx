@@ -101,26 +101,43 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     // If vision extraction returned text but no structured medications,
     // fall back to raw-text drug lookup so we never return empty-handed
-    const drugs = medications.length > 0
-      ? await matchMedications(medications)
-      : await lookupDrugs(ocrText);
+    let matched = [], notInMCAZ = [];
+    if (medications.length > 0) {
+      ({ matched, notInMCAZ } = await matchMedications(medications));
+    } else {
+      matched = await lookupDrugs(ocrText);
+    }
 
     const prescription = await prisma.prescription.create({
       data: {
         conversationId,
         rawOcrText:    ocrText,
-        drugsDetected: drugs.map(d => d.genericName || d.tradeName)
+        drugsDetected: [
+          ...matched.map(d => d.genericName || d.tradeName),
+          ...notInMCAZ,
+        ],
       }
     });
 
-    if (drugs.length === 0) {
+    if (matched.length === 0 && notInMCAZ.length === 0) {
       await send(from, m.NO_DRUGS);
       return;
     }
 
-    const drugList = drugs
-      .map(d => `• *${d.tradeName || d.genericName}* (${d.genericName}) — ${d.strength || 'see label'}`)
-      .join('\n');
+    // Build drug list — confirmed MCAZ matches first, then unregistered drugs
+    const lines = [
+      ...matched.map(d =>
+        `• *${d.tradeName || d.genericName}* (${d.genericName}) — ${d.strength || 'see label'}`
+      ),
+      ...(notInMCAZ.length > 0
+        ? [
+            '',
+            `_Not found in MCAZ register:_`,
+            ...notInMCAZ.map(n => `• ${n}`),
+          ]
+        : []),
+    ];
+    const drugList = lines.join('\n');
 
     await send(from, m.prescriptionDetected(drugList));
     await send(from, m.FULFILLMENT_PROMPT);
