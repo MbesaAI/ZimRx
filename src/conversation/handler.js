@@ -1,6 +1,6 @@
 const { sendMessage } = require('../services/whatsapp');
 const { extractTextFromImage, extractTextFromBuffer } = require('../services/ocr');
-const { matchMedications } = require('../services/drugLookup');
+const { matchMedications, lookupDrugs } = require('../services/drugLookup');
 const { explainDrugs } = require('../services/llm');
 const { findNearestPharmacies, findPharmaciesByTown, geocodeAddress } = require('../services/pharmacyFinder');
 const { LANGUAGE_MENU, getMessages } = require('../i18n/messages');
@@ -97,7 +97,13 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       return;
     }
 
-    const drugs = await matchMedications(medications);
+    console.log(`[handler] OCR done — rawText length: ${ocrText.length}, medications: ${medications.length}`);
+
+    // If vision extraction returned text but no structured medications,
+    // fall back to raw-text drug lookup so we never return empty-handed
+    const drugs = medications.length > 0
+      ? await matchMedications(medications)
+      : await lookupDrugs(ocrText);
 
     const prescription = await prisma.prescription.create({
       data: {

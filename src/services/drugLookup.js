@@ -9,8 +9,8 @@ const MEDICINE_SELECT = {
 };
 
 // ── Main matcher used by the image flow ────────────────────────────────────
-// medications: [{name, dose, form}] from Claude OCR
-// Returns MCAZ medicine records that Claude confirmed as exact matches.
+// medications: [{name, dose, form}] from Claude OCR (or plain strings)
+// Returns MCAZ medicine records confirmed as exact matches.
 
 async function matchMedications(medications) {
   if (!medications || medications.length === 0) return [];
@@ -18,73 +18,113 @@ async function matchMedications(medications) {
   // Step 1 — fetch DB candidates for each extracted drug name
   const withCandidates = await Promise.all(
     medications.map(async med => {
-      const candidates = await prisma.medicine.findMany({
+      const name = (typeof med === 'object' ? med.name : med)?.trim() || '';
+      if (!name) return { med, name, candidates: [] };
+
+      // Try startsWith first (precise); fall back to contains (catches "Co-Amoxiclav" → "AMOXICILLIN; CLAVULANATE")
+      let candidates = await prisma.medicine.findMany({
         where: {
           OR: [
-            { genericName: { startsWith: med.name, mode: 'insensitive' } },
-            { tradeName:   { startsWith: med.name, mode: 'insensitive' } },
-            { genericName: { contains:   med.name, mode: 'insensitive' } },
-            { tradeName:   { contains:   med.name, mode: 'insensitive' } },
+            { genericName: { startsWith: name, mode: 'insensitive' } },
+            { tradeName:   { startsWith: name, mode: 'insensitive' } },
           ],
         },
         select: MEDICINE_SELECT,
         take: 15,
       });
-      return { med, candidates };
+
+      if (candidates.length === 0) {
+        candidates = await prisma.medicine.findMany({
+          where: {
+            OR: [
+              { genericName: { contains: name, mode: 'insensitive' } },
+              { tradeName:   { contains: name, mode: 'insensitive' } },
+            ],
+          },
+          select: MEDICINE_SELECT,
+          take: 15,
+        });
+      }
+
+      console.log(`[drugLookup] "${name}" → ${candidates.length} DB candidates`);
+      return { med, name, candidates };
     })
   );
 
-  // Medications with no DB candidates at all — nothing to match
   const matchable = withCandidates.filter(m => m.candidates.length > 0);
+  console.log(`[drugLookup] ${medications.length} meds, ${matchable.length} have candidates`);
+
   if (matchable.length === 0) return [];
 
-  // Step 2 — send all candidates to Claude in one call; Claude picks the exact match
+  // Step 2 — ask Claude to pick the single best match for each medication
   const prompt = `You are a clinical pharmacist verifying prescriptions against the Zimbabwe MCAZ medicines register.
 
-For each prescribed medication below, select the SINGLE best-matching MCAZ candidate based on drug name, dose, and form. If no candidate is a true match, return -1.
+For each prescribed medication, select the SINGLE best-matching MCAZ candidate by drug name, dose and form.
+Return -1 only if NO candidate is even remotely the same drug.
 
 ${matchable.map((item, i) => {
-  const { name, dose, form } = item.med;
-  const detail = [name, dose, form].filter(Boolean).join(' ');
-  const candidateLines = item.candidates
+  const med   = item.med;
+  const detail = typeof med === 'object'
+    ? [med.name, med.dose, med.form].filter(Boolean).join(' ')
+    : med;
+  const lines = item.candidates
     .map((c, j) => `  [${j}] genericName="${c.genericName || ''}" tradeName="${c.tradeName || ''}" strength="${c.strength || ''}" form="${c.form || ''}"`)
     .join('\n');
-  return `PRESCRIPTION ${i}: ${detail}\nCANDIDATES:\n${candidateLines}`;
+  return `PRESCRIPTION ${i}: ${detail}\nCANDIDATES:\n${lines}`;
 }).join('\n\n')}
 
-Return a JSON array, one object per prescription, in order:
-[{"index": 0, "matchIndex": 0}, {"index": 1, "matchIndex": -1}, ...]
-- "index": prescription number (matches the PRESCRIPTION N label above)
-- "matchIndex": candidate index, or -1 if no candidate matches
+Return a JSON array with one object per prescription:
+[{"index":0,"matchIndex":0},{"index":1,"matchIndex":-1},...]
+- "index": prescription number (0-based, matches PRESCRIPTION N above)
+- "matchIndex": chosen candidate index, or -1 if truly no match
 
-Return ONLY the JSON array.`;
+Return ONLY the JSON array, no other text.`;
 
   let matches = [];
+  let claudeFailed = false;
+
   try {
     const response = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 512,
       messages:   [{ role: 'user', content: prompt }],
     });
-    const raw = response.content[0]?.text?.trim() || '[]';
+    const raw = (response.content[0]?.text || '').replace(/```(?:json)?\s*/gi, '').trim();
+    console.log('[drugLookup] Claude matching raw:', raw.slice(0, 300));
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (jsonMatch) matches = JSON.parse(jsonMatch[0]);
   } catch (err) {
-    console.error('Drug matching error:', err.message);
+    console.error('[drugLookup] Claude matching error:', err.message);
+    claudeFailed = true;
   }
 
-  // Step 3 — resolve matched records
+  // If Claude failed or returned nothing, fall back to the first (best) DB candidate per drug
+  if (claudeFailed || matches.length === 0) {
+    console.log('[drugLookup] falling back to first DB candidate per drug');
+    return dedup(matchable.map(item => item.candidates[0]));
+  }
+
+  // Step 3 — resolve matched records; for -1 results fall back to first candidate
+  const resolved = matches.map(m => {
+    const item = matchable[m.index];
+    if (!item) return null;
+    return m.matchIndex >= 0
+      ? item.candidates[m.matchIndex]
+      : item.candidates[0]; // still return best guess rather than nothing
+  });
+
+  return dedup(resolved);
+}
+
+function dedup(medicines) {
   const seen = new Set();
-  return matches
-    .filter(m => m.matchIndex >= 0 && matchable[m.index])
-    .map(m => matchable[m.index].candidates[m.matchIndex])
-    .filter(med => {
-      if (!med) return false;
-      const key = med.genericName?.toLowerCase() || med.tradeName?.toLowerCase();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  return medicines.filter(med => {
+    if (!med) return false;
+    const key = med.genericName?.toLowerCase() || med.tradeName?.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ── Fallback used by /api/translate (raw OCR text input) ──────────────────
@@ -112,13 +152,7 @@ async function lookupDrugs(ocrText) {
     take: 20,
   });
 
-  const seen = new Set();
-  return results.filter(r => {
-    const key = r.genericName?.toLowerCase() || r.tradeName?.toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return dedup(results);
 }
 
 module.exports = { matchMedications, lookupDrugs };

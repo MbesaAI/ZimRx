@@ -50,15 +50,20 @@ Respond with only the JSON object, no other text.`,
 
     const raw = response.content[0]?.text?.trim() || '';
     try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      // Strip markdown code fences Claude sometimes adds
+      const cleaned = raw.replace(/```(?:json)?\s*/gi, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         const medications = Array.isArray(parsed.medications)
           ? parsed.medications.filter(m => m && m.name)
           : [];
+        console.log(`[OCR] extracted medications:`, JSON.stringify(medications));
         return { text: parsed.rawText || raw, medications };
       }
-    } catch (_) {}
+    } catch (parseErr) {
+      console.error('[OCR] JSON parse error:', parseErr.message, '| raw:', raw.slice(0, 200));
+    }
 
     return { text: raw, medications: [] };
   } catch (error) {
