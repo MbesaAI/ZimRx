@@ -1,10 +1,12 @@
 const prisma = require('../db/client');
 
-async function lookupDrugs(ocrText) {
-  if (!ocrText || ocrText.trim() === '') return [];
+async function lookupDrugs(input) {
+  if (!input || (typeof input === 'string' && input.trim() === '') || (Array.isArray(input) && input.length === 0)) return [];
 
+  // Accept an array of extracted drug names (preferred) or a raw OCR text string (fallback)
+  const source = Array.isArray(input) ? input.join('\n') : input;
   const words = [...new Set(
-    ocrText
+    source
       .split(/[\s\n,;:\/\(\)]+/)
       .map(w => w.trim())
       .filter(w => w.length >= 4)

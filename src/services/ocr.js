@@ -27,16 +27,36 @@ async function extractTextFromBuffer(imageBuffer) {
           },
           {
             type: 'text',
-            text: 'This is a medical prescription. Extract ALL text exactly as it appears — drug names, dosages, instructions, quantities, prescriber details. Output only the raw extracted text with no commentary.',
+            text: `This is a medical prescription image.
+
+Return valid JSON with exactly two fields:
+1. "rawText": all text visible on the prescription
+2. "medications": an array of ONLY the drug/medication names being prescribed — exclude patient name, doctor name, clinic, dates, instructions, and dosage schedules
+
+Example: {"rawText": "Dr J Smith\\nRx: Amoxicillin 500mg...", "medications": ["Amoxicillin 500mg", "Paracetamol 500mg"]}
+
+Respond with only the JSON object, no other text.`,
           },
         ],
       }],
     });
 
-    return response.content[0]?.text?.trim() || '';
+    const raw = response.content[0]?.text?.trim() || '';
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          text:        parsed.rawText || raw,
+          medications: Array.isArray(parsed.medications) ? parsed.medications.filter(Boolean) : [],
+        };
+      }
+    } catch (_) {}
+
+    return { text: raw, medications: [] };
   } catch (error) {
     console.error('OCR error:', error.message);
-    return '';
+    return { text: '', medications: [] };
   }
 }
 
@@ -56,7 +76,7 @@ async function extractTextFromImage(mediaId) {
     return extractTextFromBuffer(Buffer.from(imageResponse.data));
   } catch (error) {
     console.error('OCR error:', error.message);
-    return '';
+    return { text: '', medications: [] };
   }
 }
 

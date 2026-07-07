@@ -88,7 +88,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     await send(from, m.SCANNING);
 
-    const ocrText = buffer
+    const { text: ocrText, medications } = buffer
       ? await extractTextFromBuffer(buffer)
       : await extractTextFromImage(mediaId);
 
@@ -97,7 +97,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       return;
     }
 
-    const drugs = await lookupDrugs(ocrText);
+    const drugs = await lookupDrugs(medications.length > 0 ? medications : ocrText);
 
     const prescription = await prisma.prescription.create({
       data: {
