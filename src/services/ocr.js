@@ -31,10 +31,16 @@ async function extractTextFromBuffer(imageBuffer) {
 
 Return valid JSON with exactly two fields:
 1. "rawText": all text visible on the prescription
-2. "medications": an array of ONLY the drug/active ingredient names being prescribed — just the name, no dosage numbers, no form (tablet/capsule/syrup), no instructions
+2. "medications": an array of objects, one per prescribed drug, each with:
+   - "name": the drug/active ingredient name only (no numbers, no form)
+   - "dose": the dosage as written (e.g. "250mg", "500mg/5ml") or null
+   - "form": the dosage form (e.g. "tablets", "capsules", "syrup") or null
 
-Example: {"rawText": "Dr J Smith\\nRx: Amoxicillin 250mg tabs...", "medications": ["Amoxicillin"]}
-Compound drugs example: {"rawText": "...", "medications": ["Co-Amoxiclav", "Metformin"]}
+Example:
+{
+  "rawText": "Rx: Amoxicillin 250mg tablets #42\\nT.i.d x 7 days",
+  "medications": [{"name": "Amoxicillin", "dose": "250mg", "form": "tablets"}]
+}
 
 Respond with only the JSON object, no other text.`,
           },
@@ -47,10 +53,10 @@ Respond with only the JSON object, no other text.`,
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          text:        parsed.rawText || raw,
-          medications: Array.isArray(parsed.medications) ? parsed.medications.filter(Boolean) : [],
-        };
+        const medications = Array.isArray(parsed.medications)
+          ? parsed.medications.filter(m => m && m.name)
+          : [];
+        return { text: parsed.rawText || raw, medications };
       }
     } catch (_) {}
 

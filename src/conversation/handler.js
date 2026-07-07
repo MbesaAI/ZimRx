@@ -1,6 +1,6 @@
 const { sendMessage } = require('../services/whatsapp');
 const { extractTextFromImage, extractTextFromBuffer } = require('../services/ocr');
-const { lookupDrugs } = require('../services/drugLookup');
+const { matchMedications } = require('../services/drugLookup');
 const { explainDrugs } = require('../services/llm');
 const { findNearestPharmacies, findPharmaciesByTown, geocodeAddress } = require('../services/pharmacyFinder');
 const { LANGUAGE_MENU, getMessages } = require('../i18n/messages');
@@ -92,12 +92,12 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       ? await extractTextFromBuffer(buffer)
       : await extractTextFromImage(mediaId);
 
-    if (!ocrText) {
+    if (!ocrText && medications.length === 0) {
       await send(from, m.OCR_FAIL);
       return;
     }
 
-    const drugs = await lookupDrugs(medications.length > 0 ? medications : ocrText);
+    const drugs = await matchMedications(medications);
 
     const prescription = await prisma.prescription.create({
       data: {
