@@ -40,23 +40,27 @@ model Pharmacy {
 }
 
 model Conversation {
-  id             Int            @id @default(autoincrement())
-  waId           String         @unique
-  state          String         @default("IDLE")
-  lastMessageAt  DateTime       @default(now())
-  createdAt      DateTime       @default(now())
-  prescriptions  Prescription[]
+  id                    Int            @id @default(autoincrement())
+  waId                  String         @unique
+  state                 String         @default("IDLE")
+  lastMessageAt         DateTime       @default(now())
+  createdAt             DateTime       @default(now())
+  pendingPrescriptionId Int?
+  prescriptions         Prescription[]
 
   @@map("conversations")
 }
 
 model Prescription {
-  id              Int          @id @default(autoincrement())
-  conversationId  Int
-  rawOcrText      String?
-  drugsDetected   String[]
-  submittedAt     DateTime     @default(now())
-  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  id                Int          @id @default(autoincrement())
+  conversationId    Int
+  rawOcrText        String?
+  drugsDetected     String[]
+  submittedAt       DateTime     @default(now())
+  fulfilled         Boolean?
+  fulfilledAt       DateTime?
+  fulfillmentStatus String?
+  conversation      Conversation @relation(fields: [conversationId], references: [id])
 
   @@map("prescriptions")
 }

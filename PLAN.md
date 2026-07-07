@@ -33,11 +33,11 @@ pendingPrescriptionId  Int?   // ID of the prescription awaiting fulfillment rep
 ```
 
 ### Tasks
-- [ ] Update `prisma/schema.prisma` with the three new `Prescription` fields
-- [ ] Update `prisma/schema.prisma` with `pendingPrescriptionId` on `Conversation`
-- [ ] Run `npm run db:push` to apply changes to Neon
-- [ ] Run `npm run db:generate` to regenerate Prisma client
-- [ ] Update the Database Schema section in `README.md`
+- [x] Update `prisma/schema.prisma` with the three new `Prescription` fields
+- [x] Update `prisma/schema.prisma` with `pendingPrescriptionId` on `Conversation`
+- [x] Run `npm run db:push` to apply changes to Neon
+- [x] Run `npm run db:generate` to regenerate Prisma client
+- [x] Update the Database Schema section in `README.md`
 - [ ] Commit and push: `feat: extend schema for prescription fulfillment tracking`
 
 ---
@@ -204,7 +204,7 @@ conversations
 
 | Phase | Branch | Status | PR / Commit |
 |---|---|---|---|
-| 1 — Schema | `feat/confirmed-prescriptions-schema` | [ ] Not started | — |
+| 1 — Schema | `feat/confirmed-prescriptions-schema` | [x] Complete | — |
 | 2 — WhatsApp flow | `feat/confirmed-prescriptions-flow` | [ ] Not started | — |
 | 3 — Admin API | `feat/admin-portal-api` | [ ] Not started | — |
 | 4 — Admin Dashboard | `feat/admin-portal-dashboard` | [ ] Not started | — |

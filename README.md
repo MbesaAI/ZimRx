@@ -555,17 +555,21 @@ pharmacies
   expiryDate    DateTime  Licence expiry
 
 conversations
-  id             Int       Primary key
-  waId           String    WhatsApp number (unique)
-  state          String    IDLE | AWAITING_CHOICE | AWAITING_LOCATION
-  lastMessageAt  DateTime  Last activity timestamp
+  id                    Int       Primary key
+  waId                  String    WhatsApp number (unique)
+  state                 String    IDLE | AWAITING_CHOICE | AWAITING_LOCATION | AWAITING_FULFILLMENT
+  lastMessageAt         DateTime  Last activity timestamp
+  pendingPrescriptionId Int?      ID of prescription awaiting patient fulfillment reply
 
 prescriptions
-  id              Int       Primary key
-  conversationId  Int       Foreign key → conversations
-  rawOcrText      String    Full text extracted by Google Vision
-  drugsDetected   String[]  Array of generic names matched to MCAZ
-  submittedAt     DateTime  Timestamp of submission
+  id                Int       Primary key
+  conversationId    Int       Foreign key → conversations
+  rawOcrText        String    Full text extracted by Google Vision
+  drugsDetected     String[]  Array of generic names matched to MCAZ
+  submittedAt       DateTime  Timestamp of submission
+  fulfilled         Boolean?  null=not yet asked, true=filled, false=not filled
+  fulfilledAt       DateTime? When the patient replied
+  fulfillmentStatus String?   "YES" | "STILL_LOOKING" | "NO"
 ```
 
 ---
