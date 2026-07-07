@@ -88,10 +88,10 @@ Patient sends photo
 | `3` / `no` | `NO` | `false` | "Sorry to hear that. Reply 3 and I'll find pharmacies near you that may have stock." |
 
 ### Tasks
-- [ ] Add `AWAITING_FULFILLMENT` state handling to `src/conversation/handler.js`
-- [ ] After OCR result is sent, set `state = AWAITING_FULFILLMENT` and write `pendingPrescriptionId` to the `Conversation` record
-- [ ] Handle replies 1/2/3 in `AWAITING_FULFILLMENT`: update `Prescription.fulfilled`, `fulfilledAt`, `fulfillmentStatus`; clear `pendingPrescriptionId`; transition to `AWAITING_CHOICE`
-- [ ] Update conversation state table in `README.md`
+- [x] Add `AWAITING_FULFILLMENT` state handling to `src/conversation/handler.js`
+- [x] After OCR result is sent, set `state = AWAITING_FULFILLMENT` and write `pendingPrescriptionId` to the `Conversation` record
+- [x] Handle replies 1/2/3 in `AWAITING_FULFILLMENT`: update `Prescription.fulfilled`, `fulfilledAt`, `fulfillmentStatus`; clear `pendingPrescriptionId`; transition to `AWAITING_CHOICE`
+- [x] Update conversation state table in `README.md`
 - [ ] Commit and push: `feat: add prescription fulfillment confirmation to WhatsApp flow`
 
 ---
@@ -205,6 +205,6 @@ conversations
 | Phase | Branch | Status | PR / Commit |
 |---|---|---|---|
 | 1 — Schema | `feat/confirmed-prescriptions-schema` | [x] Complete | — |
-| 2 — WhatsApp flow | `feat/confirmed-prescriptions-flow` | [ ] Not started | — |
+| 2 — WhatsApp flow | `feat/confirmed-prescriptions-flow` | [x] Complete | — |
 | 3 — Admin API | `feat/admin-portal-api` | [ ] Not started | — |
 | 4 — Admin Dashboard | `feat/admin-portal-dashboard` | [ ] Not started | — |

@@ -98,7 +98,8 @@ or Find pharmacy (3)
 | State | Triggered by | Waiting for |
 |---|---|---|
 | `IDLE` | New user or completed flow | Any message → show menu |
-| `AWAITING_CHOICE` | Bot showed drug list after OCR | Patient picks option 2 or 3 |
+| `AWAITING_FULFILLMENT` | Bot delivered OCR result | Patient confirms whether they filled the prescription (1/2/3) |
+| `AWAITING_CHOICE` | Patient answered fulfillment prompt | Patient picks option 2 (explain) or 3 (pharmacy) |
 | `AWAITING_LOCATION` | Patient chose pharmacy finder | WhatsApp location share or town name |
 
 ### Example conversation

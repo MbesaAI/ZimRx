@@ -6,12 +6,17 @@ const { findNearestPharmacies, findPharmaciesByTown } = require('../services/pha
 const prisma = require('../db/client');
 
 const STATES = {
-  IDLE:              'IDLE',
-  AWAITING_CHOICE:   'AWAITING_CHOICE',
-  AWAITING_LOCATION: 'AWAITING_LOCATION',
+  IDLE:                 'IDLE',
+  AWAITING_CHOICE:      'AWAITING_CHOICE',
+  AWAITING_LOCATION:    'AWAITING_LOCATION',
+  AWAITING_FULFILLMENT: 'AWAITING_FULFILLMENT',
 };
 
 const MENU = `Welcome to *ZimRx* 🏥\n\nI can help you with your prescription. What would you like?\n\n*1* — 📋 Translate my prescription\n*2* — 💊 Explain my medication\n*3* — 🗺️ Find nearest pharmacy\n*4* — 📁 Retrieve my last prescription\n\nOr send a *photo* of your prescription to get started.`;
+
+const FULFILLMENT_PROMPT = `💊 *Quick check — were you able to fill this prescription?*\n\n*1* — Yes, I collected my medicines ✅\n*2* — Not yet, still looking 🔍\n*3* — No, I couldn't find them ❌`;
+
+// ── DB helpers ─────────────────────────────────────────────────────────────
 
 async function getOrCreateConversation(waId) {
   return prisma.conversation.upsert({
@@ -21,11 +26,11 @@ async function getOrCreateConversation(waId) {
   });
 }
 
-async function setState(waId, state) {
-  return prisma.conversation.update({
-    where: { waId },
-    data:  { state }
-  });
+// Transition state and optionally set/clear pendingPrescriptionId atomically.
+async function transitionTo(waId, state, pendingPrescriptionId = undefined) {
+  const data = { state };
+  if (pendingPrescriptionId !== undefined) data.pendingPrescriptionId = pendingPrescriptionId;
+  return prisma.conversation.update({ where: { waId }, data });
 }
 
 async function getLastPrescription(conversationId) {
@@ -35,9 +40,18 @@ async function getLastPrescription(conversationId) {
   });
 }
 
+async function recordFulfillment(prescriptionId, fulfillmentStatus, fulfilled) {
+  return prisma.prescription.update({
+    where: { id: prescriptionId },
+    data:  { fulfilled, fulfillmentStatus, fulfilledAt: new Date() }
+  });
+}
+
+// ── Main handler ───────────────────────────────────────────────────────────
+
 async function handleIncomingMessage(from, type, message) {
   const conversation = await getOrCreateConversation(from);
-  const { state, id: conversationId } = conversation;
+  const { state, id: conversationId, pendingPrescriptionId } = conversation;
 
   // ── IMAGE ──────────────────────────────────────────────────────────────────
   if (type === 'image') {
@@ -53,7 +67,7 @@ async function handleIncomingMessage(from, type, message) {
 
     const drugs = await lookupDrugs(ocrText);
 
-    await prisma.prescription.create({
+    const prescription = await prisma.prescription.create({
       data: {
         conversationId,
         rawOcrText:    ocrText,
@@ -70,8 +84,9 @@ async function handleIncomingMessage(from, type, message) {
       .map(d => `• *${d.tradeName || d.genericName}* (${d.genericName}) — ${d.strength || 'see label'}`)
       .join('\n');
 
-    await sendMessage(from, `✅ *Prescription detected:*\n\n${drugList}\n\nWhat would you like?\n*2* — Explain what these medications do\n*3* — Find a pharmacy near you`);
-    await setState(from, STATES.AWAITING_CHOICE);
+    await sendMessage(from, `✅ *Prescription detected:*\n\n${drugList}`);
+    await sendMessage(from, FULFILLMENT_PROMPT);
+    await transitionTo(from, STATES.AWAITING_FULFILLMENT, prescription.id);
     return;
   }
 
@@ -84,7 +99,7 @@ async function handleIncomingMessage(from, type, message) {
 
     if (pharmacies.length === 0) {
       await sendMessage(from, 'No registered pharmacies found near your location. Try typing your town name instead.');
-      await setState(from, STATES.IDLE);
+      await transitionTo(from, STATES.IDLE);
       return;
     }
 
@@ -93,7 +108,7 @@ async function handleIncomingMessage(from, type, message) {
     ).join('\n\n');
 
     await sendMessage(from, `🏥 *Nearest pharmacies to you:*\n\n${list}\n\nSave this message so you have it offline.`);
-    await setState(from, STATES.IDLE);
+    await transitionTo(from, STATES.IDLE);
     return;
   }
 
@@ -102,13 +117,47 @@ async function handleIncomingMessage(from, type, message) {
     const text  = message.text.body.trim();
     const lower = text.toLowerCase();
 
-    // Option 1 — Translate
+    // ── AWAITING_FULFILLMENT ─────────────────────────────────────────────────
+    // Patient is responding to the post-scan fulfillment check.
+    // Numbers 1/2/3 here correspond to the fulfillment prompt, not the main menu.
+    if (state === STATES.AWAITING_FULFILLMENT) {
+      const isYes     = text === '1' || lower === 'yes' || lower.startsWith('yes ') || lower.includes('collected') || lower.includes('got my');
+      const isNo      = text === '3' || lower === 'no'  || lower.startsWith('no,')  || lower.startsWith('no ') || lower.includes("couldn't") || lower.includes('could not');
+      const isLooking = text === '2' || lower === 'still' || lower === 'looking' || lower.includes('not yet') || lower.includes('still looking') || lower.includes('still searching');
+
+      if (isYes) {
+        if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'YES', true);
+        await transitionTo(from, STATES.AWAITING_CHOICE, null);
+        await sendMessage(from, '✅ Great! Glad you got your medicines.\n\nReply *2* to get an explanation of your medications or *3* to find another pharmacy.');
+        return;
+      }
+
+      if (isNo) {
+        if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'NO', false);
+        await transitionTo(from, STATES.AWAITING_CHOICE, null);
+        await sendMessage(from, '😔 Sorry to hear that. Reply *3* and I\'ll find the nearest pharmacies for you.');
+        return;
+      }
+
+      if (isLooking) {
+        if (pendingPrescriptionId) await recordFulfillment(pendingPrescriptionId, 'STILL_LOOKING', false);
+        await transitionTo(from, STATES.AWAITING_CHOICE, null);
+        await sendMessage(from, '🔍 No problem — reply *3* to find the nearest pharmacies, or *2* to understand your medications.');
+        return;
+      }
+
+      // Unrecognised reply — re-prompt without changing state
+      await sendMessage(from, `Please reply with *1*, *2*, or *3*.\n\n${FULFILLMENT_PROMPT}`);
+      return;
+    }
+
+    // ── Option 1 — Translate ─────────────────────────────────────────────────
     if (text === '1' || lower.includes('translate') || lower.includes('read prescription')) {
       await sendMessage(from, '📸 Please send a photo of your prescription and I will read it for you.');
       return;
     }
 
-    // Option 2 — Explain medication
+    // ── Option 2 — Explain medication ────────────────────────────────────────
     if (text === '2' || lower.includes('explain') || lower.includes('medication')) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx || lastRx.drugsDetected.length === 0) {
@@ -118,18 +167,18 @@ async function handleIncomingMessage(from, type, message) {
       await sendMessage(from, '⏳ Looking up your medications...');
       const explanation = await explainDrugs(lastRx.drugsDetected);
       await sendMessage(from, `💊 *Your medication explained:*\n\n${explanation}`);
-      await setState(from, STATES.IDLE);
+      await transitionTo(from, STATES.IDLE);
       return;
     }
 
-    // Option 3 — Find pharmacy
+    // ── Option 3 — Find pharmacy ─────────────────────────────────────────────
     if (text === '3' || lower.includes('pharmacy') || lower.includes('find')) {
       await sendMessage(from, `📍 To find the nearest pharmacy, please share your location.\n\nIn WhatsApp:\n1. Tap the *paperclip* (📎) icon\n2. Tap *Location*\n3. Tap *Send Your Current Location*\n\nOr type your town name (e.g. "Harare" or "Bulawayo")`);
-      await setState(from, STATES.AWAITING_LOCATION);
+      await transitionTo(from, STATES.AWAITING_LOCATION);
       return;
     }
 
-    // Option 4 — Retrieve last prescription
+    // ── Option 4 — Retrieve last prescription ────────────────────────────────
     if (text === '4' || lower.includes('my prescription') || lower.includes('last prescription')) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx) {
@@ -142,7 +191,7 @@ async function handleIncomingMessage(from, type, message) {
       return;
     }
 
-    // Town name while waiting for location
+    // ── Town name while waiting for location ─────────────────────────────────
     if (state === STATES.AWAITING_LOCATION) {
       const pharmacies = await findPharmaciesByTown(text, 3);
       if (pharmacies.length > 0) {
@@ -150,14 +199,14 @@ async function handleIncomingMessage(from, type, message) {
           `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}`
         ).join('\n\n');
         await sendMessage(from, `🏥 *Pharmacies in ${text}:*\n\n${list}`);
-        await setState(from, STATES.IDLE);
+        await transitionTo(from, STATES.IDLE);
         return;
       }
     }
 
-    // Default — show menu
+    // ── Default — show menu ──────────────────────────────────────────────────
     await sendMessage(from, MENU);
-    await setState(from, STATES.IDLE);
+    await transitionTo(from, STATES.IDLE);
     return;
   }
 
