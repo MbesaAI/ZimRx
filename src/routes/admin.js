@@ -1,10 +1,17 @@
 const express = require('express');
+const path    = require('path');
 const router  = express.Router();
 const prisma  = require('../db/client');
 
 // Minimum group size — suppress buckets with fewer than this many records
 // to reduce the risk of patient-level inference.
 const MIN_GROUP = 5;
+
+// ── GET /admin ────────────────────────────────────────────────────────────
+// Serves the stakeholder dashboard (auth already checked by middleware).
+router.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../views/admin.html'));
+});
 
 // ── GET /admin/api/stats/overview ─────────────────────────────────────────
 // Top-level KPI numbers: total queries, confirmed dispensations,

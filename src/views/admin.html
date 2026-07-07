@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZimRx — MCAZ Analytics Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #006400;
+      --gold:    #FFD200;
+      --red:     #EF3340;
+      --bg:      #f4f6f9;
+      --surface: #ffffff;
+      --border:  #e2e8f0;
+      --text:    #1a202c;
+      --muted:   #718096;
+      --radius:  10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--green);
+      color: #fff;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .logo { font-size: 1.5rem; font-weight: 800; letter-spacing: -.5px; }
+    .logo span { color: var(--gold); }
+    .subtitle { font-size: .8rem; opacity: .8; }
+    .refresh-btn {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff;
+      padding: .4rem .9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .8rem;
+      transition: background .2s;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,.25); }
+    #last-updated { font-size: .75rem; opacity: .7; }
+
+    /* ── Main layout ── */
+    main { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── Privacy banner ── */
+    .privacy-banner {
+      background: #EBF8FF;
+      border: 1px solid #BEE3F8;
+      border-left: 4px solid #3182CE;
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      font-size: .82rem;
+      color: #2C5282;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── KPI cards ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--green);
+    }
+    .kpi-card.gold::before  { background: var(--gold); }
+    .kpi-card.red::before   { background: var(--red); }
+    .kpi-card.blue::before  { background: #3182CE; }
+    .kpi-label { font-size: .78rem; color: var(--muted); margin-bottom: .4rem; }
+    .kpi-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .kpi-sub   { font-size: .75rem; color: var(--muted); margin-top: .35rem; }
+
+    /* ── Chart grid ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .chart-grid.wide { grid-template-columns: 1fr; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .card-title {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .25rem;
+    }
+    .card-desc {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap.tall { height: 360px; }
+
+    /* ── Loading / error states ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin-right: .6rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: .75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .chart-grid { grid-template-columns: 1fr; }
+      header { padding: 0 1rem; }
+      .subtitle { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div>
+      <div class="logo">Zim<span>Rx</span></div>
+      <div class="subtitle">MCAZ Analytics Portal</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <span id="last-updated"></span>
+    <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
+  </div>
+</header>
+
+<main>
+
+  <div class="privacy-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span><strong>Data Protection:</strong> Patient identity is not collected or displayed. This dashboard shows medicine movement and prescription query patterns only. Compliant with the Zimbabwe Data Protection Act, 2021.</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <p class="section-title">Key Metrics</p>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Prescription Queries</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">Scans received via WhatsApp</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Confirmed Dispensations</div>
+      <div class="kpi-value" id="kpi-confirmed">—</div>
+      <div class="kpi-sub">Patients who collected their medicines</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Fulfillment Rate</div>
+      <div class="kpi-value" id="kpi-rate">—</div>
+      <div class="kpi-sub" id="kpi-rate-sub">Of patients who responded</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Response Rate</div>
+      <div class="kpi-value" id="kpi-response">—</div>
+      <div class="kpi-sub">Patients who answered the fulfillment check</div>
+    </div>
+  </div>
+
+  <!-- Timeseries -->
+  <div class="chart-grid wide" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-title">Prescription Queries Over Time</div>
+      <div class="card-desc">Daily query volume — last 30 days</div>
+      <div class="chart-wrap">
+        <div class="loading" id="loading-timeseries"><div class="spinner"></div> Loading…</div>
+        <canvas id="chart-timeseries" style="display:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Medicines + Fulfillment -->
+  <div class="chart-grid" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-title">Top Medicines by Query Volume</div>
+      <div class="card-desc">Most-queried drugs from the MCAZ register</div>
+      <div class="chart-wrap tall">
+        <div class="loading" id="loading-medicines"><div class="spinner"></div> Loading…</div>
+        <canvas id="chart-medicines" style="display:none;"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prescription Fulfillment Breakdown</div>
+      <div class="card-desc">Did patients collect their medicines?</div>
+      <div class="chart-wrap">
+        <div class="loading" id="loading-fulfillment"><div class="spinner"></div> Loading…</div>
+        <canvas id="chart-fulfillment" style="display:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Geography + Categories -->
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">Query Volume by Town</div>
+      <div class="card-desc">Geographic distribution of prescription queries</div>
+      <div class="chart-wrap tall">
+        <div class="loading" id="loading-geography"><div class="spinner"></div> Loading…</div>
+        <canvas id="chart-geography" style="display:none;"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Queries by Medicine Category</div>
+      <div class="card-desc">Breakdown by MCAZ schedule / distribution category</div>
+      <div class="chart-wrap tall">
+        <div class="loading" id="loading-categories"><div class="spinner"></div> Loading…</div>
+        <canvas id="chart-categories" style="display:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  ZimRx &mdash; MCAZ Analytics Portal &mdash; Data shown is aggregated and anonymised &mdash; No patient identifiers are stored or displayed
+</footer>
+
+<script>
+  const BASE = '/admin/api/stats';
+
+  const GREEN  = '#006400';
+  const GOLD   = '#FFD200';
+  const RED    = '#EF3340';
+  const BLUE   = '#3182CE';
+  const TEAL   = '#319795';
+  const ORANGE = '#DD6B20';
+
+  const PALETTE = [GREEN, GOLD, BLUE, TEAL, ORANGE, RED,
+    '#6B46C1','#2F855A','#C05621','#2C5282','#702459','#276749'];
+
+  let charts = {};
+
+  function showCanvas(id) {
+    document.getElementById('loading-' + id).style.display = 'none';
+    const c = document.getElementById('chart-' + id);
+    c.style.display = 'block';
+    return c;
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById('loading-' + id);
+    el.innerHTML = `<span style="color:#E53E3E">⚠ ${msg}</span>`;
+  }
+
+  function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+  }
+
+  // ── Overview KPIs ──────────────────────────────────────────────────────
+  async function loadOverview() {
+    try {
+      const d = await fetch(BASE + '/overview').then(r => r.json());
+      document.getElementById('kpi-total').textContent     = d.totalQueries.toLocaleString();
+      document.getElementById('kpi-confirmed').textContent = d.confirmedDispensations.toLocaleString();
+      document.getElementById('kpi-rate').textContent      = d.fulfillmentRate + '%';
+      document.getElementById('kpi-response').textContent  = d.responseRate + '%';
+      document.getElementById('kpi-rate-sub').textContent  =
+        `${d.confirmedDispensations} of ${d.confirmedDispensations + d.notFilled + d.stillLooking} who responded`;
+    } catch (e) {
+      ['total','confirmed','rate','response'].forEach(k =>
+        document.getElementById('kpi-' + k).textContent = 'Error');
+    }
+  }
+
+  // ── Timeseries ─────────────────────────────────────────────────────────
+  async function loadTimeseries() {
+    try {
+      const d = await fetch(BASE + '/timeseries').then(r => r.json());
+      const canvas = showCanvas('timeseries');
+      destroyChart('timeseries');
+
+      if (!d.series.length) {
+        showCanvas('timeseries');
+        canvas.style.display = 'none';
+        document.getElementById('loading-timeseries').style.display = 'flex';
+        document.getElementById('loading-timeseries').innerHTML = '<span style="color:#718096">No data yet — queries will appear here once patients start using ZimRx.</span>';
+        return;
+      }
+
+      charts.timeseries = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels:   d.series.map(r => r.date),
+          datasets: [{
+            label:           'Prescription Queries',
+            data:            d.series.map(r => r.queries),
+            borderColor:     GREEN,
+            backgroundColor: 'rgba(0,100,0,.08)',
+            borderWidth:     2,
+            pointRadius:     3,
+            tension:         .35,
+            fill:            true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 } } },
+            y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } }
+          }
+        }
+      });
+    } catch (e) { showError('timeseries', 'Could not load timeseries data'); }
+  }
+
+  // ── Medicines ──────────────────────────────────────────────────────────
+  async function loadMedicines() {
+    try {
+      const d = await fetch(BASE + '/medicines').then(r => r.json());
+      const canvas = showCanvas('medicines');
+      destroyChart('medicines');
+
+      if (!d.medicines.length) {
+        canvas.style.display = 'none';
+        document.getElementById('loading-medicines').style.display = 'flex';
+        document.getElementById('loading-medicines').innerHTML = '<span style="color:#718096">No medicine data yet.</span>';
+        return;
+      }
+
+      const top = d.medicines.slice(0, 15);
+      charts.medicines = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels:   top.map(r => r.medicine),
+          datasets: [{
+            label:           'Queries',
+            data:            top.map(r => r.queries),
+            backgroundColor: top.map((_, i) => PALETTE[i % PALETTE.length] + 'CC'),
+            borderColor:     top.map((_, i) => PALETTE[i % PALETTE.length]),
+            borderWidth:     1,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+            y: { ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+    } catch (e) { showError('medicines', 'Could not load medicines data'); }
+  }
+
+  // ── Fulfillment ────────────────────────────────────────────────────────
+  async function loadFulfillment() {
+    try {
+      const d = await fetch(BASE + '/fulfillment').then(r => r.json());
+      const canvas = showCanvas('fulfillment');
+      destroyChart('fulfillment');
+
+      const LABELS = {
+        YES:          'Collected medicines ✅',
+        STILL_LOOKING:'Still searching 🔍',
+        NO:           'Could not fill ❌',
+        NOT_ASKED:    'Not yet asked',
+      };
+      const COLORS = { YES: GREEN, STILL_LOOKING: GOLD, NO: RED, NOT_ASKED: '#CBD5E0' };
+
+      if (!d.breakdown.length) {
+        canvas.style.display = 'none';
+        document.getElementById('loading-fulfillment').style.display = 'flex';
+        document.getElementById('loading-fulfillment').innerHTML = '<span style="color:#718096">No fulfillment responses yet.</span>';
+        return;
+      }
+
+      charts.fulfillment = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels:   d.breakdown.map(r => LABELS[r.status] || r.status),
+          datasets: [{
+            data:            d.breakdown.map(r => r.count),
+            backgroundColor: d.breakdown.map(r => COLORS[r.status] || BLUE),
+            borderWidth:     2,
+            borderColor:     '#fff',
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.parsed} (${d.breakdown[ctx.dataIndex].percentage}%)`
+              }
+            }
+          }
+        }
+      });
+    } catch (e) { showError('fulfillment', 'Could not load fulfillment data'); }
+  }
+
+  // ── Geography ──────────────────────────────────────────────────────────
+  async function loadGeography() {
+    try {
+      const d = await fetch(BASE + '/geography').then(r => r.json());
+      const canvas = showCanvas('geography');
+      destroyChart('geography');
+
+      const rows = d.towns || [];
+
+      if (!rows.length) {
+        canvas.style.display = 'none';
+        document.getElementById('loading-geography').style.display = 'flex';
+        document.getElementById('loading-geography').innerHTML = '<span style="color:#718096">No geographic data yet.</span>';
+        return;
+      }
+
+      const top = rows.slice(0, 15);
+      const field = top[0].queries !== undefined ? 'queries' : 'count';
+
+      charts.geography = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels:   top.map(r => r.town),
+          datasets: [{
+            label:           d.note ? 'Registered Pharmacies' : 'Prescription Queries',
+            data:            top.map(r => r[field]),
+            backgroundColor: TEAL + 'BB',
+            borderColor:     TEAL,
+            borderWidth:     1,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            subtitle: d.note ? {
+              display: true,
+              text: 'Showing pharmacy register distribution (no prescription location data yet)',
+              font: { size: 11 }, color: '#718096', padding: { bottom: 12 }
+            } : { display: false }
+          },
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+            y: { ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+    } catch (e) { showError('geography', 'Could not load geography data'); }
+  }
+
+  // ── Categories ─────────────────────────────────────────────────────────
+  async function loadCategories() {
+    try {
+      const d = await fetch(BASE + '/categories').then(r => r.json());
+      const canvas = showCanvas('categories');
+      destroyChart('categories');
+
+      if (!d.categories.length) {
+        canvas.style.display = 'none';
+        document.getElementById('loading-categories').style.display = 'flex';
+        document.getElementById('loading-categories').innerHTML = '<span style="color:#718096">No category data yet.</span>';
+        return;
+      }
+
+      // Shorten long MCAZ category names for display
+      const shorten = s => s
+        .replace('PRESCRIPTION PREPARATIONS', 'Rx')
+        .replace('PHARMACIST INITIATED MEDICINES', 'PIM')
+        .replace('PHARMACY MEDICINES', 'Pharmacy')
+        .replace('CONTROLLED SUBSTANCES', 'Controlled')
+        .replace(/\(.*?\)/g, '')
+        .replace(/SCHEDULE/gi, 'Sch.')
+        .trim();
+
+      charts.categories = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels:   d.categories.map(r => shorten(r.category)),
+          datasets: [{
+            label:           'Queries',
+            data:            d.categories.map(r => r.queries),
+            backgroundColor: d.categories.map((_, i) => PALETTE[i % PALETTE.length] + 'CC'),
+            borderColor:     d.categories.map((_, i) => PALETTE[i % PALETTE.length]),
+            borderWidth:     1,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+            y: { ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    } catch (e) { showError('categories', 'Could not load categories data'); }
+  }
+
+  // ── Load all ───────────────────────────────────────────────────────────
+  async function loadAll() {
+    await Promise.all([
+      loadOverview(),
+      loadTimeseries(),
+      loadMedicines(),
+      loadFulfillment(),
+      loadGeography(),
+      loadCategories(),
+    ]);
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  loadAll();
+  // Auto-refresh every 5 minutes
+  setInterval(loadAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>

@@ -288,6 +288,7 @@ Full interactive documentation available at `/api-docs` (Swagger UI).
 | `POST` | `/api/explain` | Get Claude plain-language drug explanation |
 | `GET` | `/api/pharmacies` | Find pharmacies by coordinates or town name |
 | `GET` | `/api/records/:waId` | Get prescription history for a patient |
+| `GET` | `/admin` | Stakeholder analytics dashboard — Chart.js UI (auth required) |
 | `GET` | `/admin/api/stats/overview` | KPI totals — queries, dispensations, fulfillment rate (auth required) |
 | `GET` | `/admin/api/stats/timeseries` | Daily query counts for the last 30 days (auth required) |
 | `GET` | `/admin/api/stats/medicines` | Top 20 most-queried medicines (auth required) |

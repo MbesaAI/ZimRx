@@ -166,12 +166,12 @@ All queries aggregate data — no `waId`, no `rawOcrText`, no individual records
 | `src/views/admin.html` | Dashboard HTML with inline Chart.js calls |
 
 ### Tasks
-- [ ] Create `src/middleware/adminAuth.js` — check `Authorization: Basic ...` header against `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars
-- [ ] Create `src/views/admin.html` — responsive HTML dashboard with Chart.js (CDN), fetches from `/admin/api/stats/*` on load
-- [ ] Create `src/routes/adminDashboard.js` — `GET /admin` serves `admin.html`
-- [ ] Apply `adminAuth` middleware to all `/admin` routes in `index.js`
-- [ ] Add `ADMIN_USERNAME` and `ADMIN_PASSWORD` to `.env.example`
-- [ ] Update `README.md`: add `/admin` to API Endpoints table and document the two new env vars
+- [x] Create `src/middleware/adminAuth.js` — check `Authorization: Basic ...` header against `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars
+- [x] Create `src/views/admin.html` — responsive HTML dashboard with Chart.js (CDN), fetches from `/admin/api/stats/*` on load
+- [x] `GET /admin` route added directly to `src/routes/admin.js` (no separate file needed)
+- [x] Apply `adminAuth` middleware to all `/admin` routes in `index.js`
+- [x] Add `ADMIN_USERNAME` and `ADMIN_PASSWORD` to `.env.example`
+- [x] Update `README.md`: add `/admin` to API Endpoints table and document the two new env vars
 - [ ] Commit and push: `feat: admin portal dashboard with basic auth`
 
 ---
@@ -207,4 +207,4 @@ conversations
 | 1 — Schema | `feat/confirmed-prescriptions-schema` | [x] Complete | — |
 | 2 — WhatsApp flow | `feat/confirmed-prescriptions-flow` | [x] Complete | — |
 | 3 — Admin API | `feat/admin-portal-api` | [x] Complete | — |
-| 4 — Admin Dashboard | `feat/admin-portal-dashboard` | [ ] Not started | — |
+| 4 — Admin Dashboard | `feat/admin-portal-dashboard` | [x] Complete | — |
