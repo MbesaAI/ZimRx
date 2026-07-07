@@ -19,7 +19,16 @@ const options = {
       { name: 'Explain',    description: 'LLM drug explanation' },
       { name: 'Pharmacies', description: 'MCAZ pharmacy register queries' },
       { name: 'Records',    description: 'Patient prescription records' },
-    ]
+      { name: 'Admin',      description: 'Aggregated analytics — requires Basic Auth' },
+    ],
+    components: {
+      securitySchemes: {
+        basicAuth: {
+          type:   'http',
+          scheme: 'basic',
+        }
+      }
+    }
   },
   apis: ['./src/routes/*.js'],
 };

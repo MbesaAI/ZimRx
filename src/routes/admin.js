@@ -13,9 +13,33 @@ router.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../views/admin.html'));
 });
 
-// ── GET /admin/api/stats/overview ─────────────────────────────────────────
-// Top-level KPI numbers: total queries, confirmed dispensations,
-// fulfillment rate. No individual records returned.
+/**
+ * @swagger
+ * /admin/api/stats/overview:
+ *   get:
+ *     summary: Top-level KPI overview
+ *     description: Total queries, confirmed dispensations, and fulfillment rate. No individual patient records returned. Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     responses:
+ *       200:
+ *         description: Aggregated KPI numbers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalQueries:            { type: integer }
+ *                 confirmedDispensations:  { type: integer }
+ *                 notFilled:               { type: integer }
+ *                 stillLooking:            { type: integer }
+ *                 noResponseYet:           { type: integer }
+ *                 responseRate:            { type: integer, description: "% of users who replied to fulfillment prompt" }
+ *                 fulfillmentRate:         { type: integer, description: "% of responded users who confirmed dispensation" }
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/overview', async (req, res) => {
   const [total, confirmed, notFilled, stillLooking] = await Promise.all([
     prisma.prescription.count(),
@@ -39,8 +63,28 @@ router.get('/api/stats/overview', async (req, res) => {
   });
 });
 
-// ── GET /admin/api/stats/timeseries ───────────────────────────────────────
-// Prescription query counts per day for the last 30 days.
+/**
+ * @swagger
+ * /admin/api/stats/timeseries:
+ *   get:
+ *     summary: Prescription queries per day
+ *     description: Daily query counts for the last N days. Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 30
+ *         description: Number of days to look back
+ *     responses:
+ *       200:
+ *         description: Time-series data
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/timeseries', async (req, res) => {
   const days = parseInt(req.query.days) || 30;
   const since = new Date();
@@ -65,9 +109,28 @@ router.get('/api/stats/timeseries', async (req, res) => {
   });
 });
 
-// ── GET /admin/api/stats/medicines ────────────────────────────────────────
-// Top 20 most-queried individual medicine names (from drugsDetected arrays).
-// Groups with fewer than MIN_GROUP occurrences are suppressed.
+/**
+ * @swagger
+ * /admin/api/stats/medicines:
+ *   get:
+ *     summary: Top queried medicines
+ *     description: Most-queried MCAZ medicine names across all prescriptions. Groups below the minimum threshold are suppressed for privacy. Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 50
+ *     responses:
+ *       200:
+ *         description: Ranked medicine list
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/medicines', async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
 
@@ -87,8 +150,21 @@ router.get('/api/stats/medicines', async (req, res) => {
   res.json({ limit, medicines: rows });
 });
 
-// ── GET /admin/api/stats/fulfillment ──────────────────────────────────────
-// Breakdown of prescription fulfillment outcomes.
+/**
+ * @swagger
+ * /admin/api/stats/fulfillment:
+ *   get:
+ *     summary: Fulfillment outcome breakdown
+ *     description: Counts and percentages for each prescription fulfillment status (YES / NO / STILL_LOOKING / NOT_ASKED). Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     responses:
+ *       200:
+ *         description: Fulfillment breakdown
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/fulfillment', async (req, res) => {
   const rows = await prisma.$queryRaw`
     SELECT
@@ -111,9 +187,21 @@ router.get('/api/stats/fulfillment', async (req, res) => {
   });
 });
 
-// ── GET /admin/api/stats/geography ────────────────────────────────────────
-// Prescription query volume by town, derived from pharmacy-finder usage.
-// Only towns with at least MIN_GROUP queries are returned.
+/**
+ * @swagger
+ * /admin/api/stats/geography:
+ *   get:
+ *     summary: Query volume by town
+ *     description: Prescription query counts grouped by town. Only towns above the minimum group threshold are returned. Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     responses:
+ *       200:
+ *         description: Town-level query distribution
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/geography', async (req, res) => {
   const rows = await prisma.$queryRaw`
     SELECT
@@ -156,9 +244,21 @@ router.get('/api/stats/geography', async (req, res) => {
   res.json({ towns: rows });
 });
 
-// ── GET /admin/api/stats/categories ──────────────────────────────────────
-// Query volume by MCAZ medicine category (schedule), joined from the
-// medicines table via detected drug names.
+/**
+ * @swagger
+ * /admin/api/stats/categories:
+ *   get:
+ *     summary: Query volume by medicine category
+ *     description: Prescription query counts grouped by MCAZ medicine schedule/category. Requires Basic Auth.
+ *     tags: [Admin]
+ *     security:
+ *       - basicAuth: []
+ *     responses:
+ *       200:
+ *         description: Category breakdown
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/api/stats/categories', async (req, res) => {
   const rows = await prisma.$queryRaw`
     SELECT

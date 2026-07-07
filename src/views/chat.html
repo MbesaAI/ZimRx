@@ -253,6 +253,7 @@ body{
         📎
         <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="onFileSelect(event)">
       </label>
+      <button class="icon-btn" title="Share location" onclick="sendLocation()">📍</button>
       <textarea id="msgInput" rows="1" placeholder="Type a message"
         oninput="autoResize(this)"
         onkeydown="onKeyDown(event)"></textarea>
@@ -440,6 +441,27 @@ function clearImage() {
   pendingImage = null;
   document.getElementById('imgPreview').classList.remove('on');
   document.getElementById('previewImg').src = '';
+}
+
+// ── Location sharing ───────────────────────────────────────────────────────
+async function sendLocation() {
+  if (!navigator.geolocation) {
+    addBotMessage('❌ Your browser does not support location sharing. Type your town name instead (e.g. "Harare").');
+    return;
+  }
+  addUserText('📍 Sharing my location…');
+  showTyping();
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude, longitude } = pos.coords;
+      await callAPI({ type: 'location', latitude, longitude });
+    },
+    err => {
+      hideTyping();
+      addBotMessage('❌ Could not get your location. Please type your town name instead (e.g. "Harare" or "Bulawayo").');
+    },
+    { timeout: 10000 }
+  );
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────────
