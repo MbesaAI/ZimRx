@@ -11,7 +11,8 @@
     "db:generate": "npx prisma generate",
     "seed:medicines": "node src/db/seed/seedMedicines.js",
     "seed:pharmacies": "node src/db/seed/seedPharmacies.js",
-    "seed": "npm run seed:medicines && npm run seed:pharmacies"
+    "seed": "npm run seed:medicines && npm run seed:pharmacies",
+    "geocode:pharmacies": "node src/db/seed/geocodePharmacies.js"
   },
   "keywords": [],
   "author": "",
