@@ -602,8 +602,8 @@ prescriptions
 - [x] Railway deployment
 
 ### Phase 2 — Language and Accessibility
-- [ ] Shona language responses
-- [ ] Ndebele language responses
+- [x] Shona language responses
+- [x] Ndebele language responses
 - [ ] Drug interaction checker (flag dangerous combinations)
 - [ ] Photo quality validation before OCR
 - [ ] Manual drug name text input as OCR fallback
