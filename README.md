@@ -288,6 +288,12 @@ Full interactive documentation available at `/api-docs` (Swagger UI).
 | `POST` | `/api/explain` | Get Claude plain-language drug explanation |
 | `GET` | `/api/pharmacies` | Find pharmacies by coordinates or town name |
 | `GET` | `/api/records/:waId` | Get prescription history for a patient |
+| `GET` | `/admin/api/stats/overview` | KPI totals — queries, dispensations, fulfillment rate (auth required) |
+| `GET` | `/admin/api/stats/timeseries` | Daily query counts for the last 30 days (auth required) |
+| `GET` | `/admin/api/stats/medicines` | Top 20 most-queried medicines (auth required) |
+| `GET` | `/admin/api/stats/fulfillment` | YES / STILL_LOOKING / NO / NOT_ASKED breakdown (auth required) |
+| `GET` | `/admin/api/stats/geography` | Query volume by town (auth required) |
+| `GET` | `/admin/api/stats/categories` | Query volume by MCAZ medicine category (auth required) |
 
 ### Example: Find pharmacies by coordinates
 ```http
@@ -468,6 +474,10 @@ GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
 # Anthropic Claude
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
 
+# Admin Portal — protects /admin/* routes with HTTP Basic Auth
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change_me_before_deploy
+
 # App
 PORT=3000
 NODE_ENV=development
@@ -483,6 +493,8 @@ NODE_ENV=development
 | `DATABASE_URL` | Neon dashboard → your project → Connection Details → Connection string |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud Console → IAM → Service Accounts → Keys → Download JSON |
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys → Create Key |
+| `ADMIN_USERNAME` | Choose any username (default: `admin`) |
+| `ADMIN_PASSWORD` | Choose a strong password — set this in Railway dashboard |
 
 ---
 

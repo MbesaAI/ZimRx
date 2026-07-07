@@ -9,6 +9,8 @@ const translateRoute  = require('./src/routes/translate');
 const explainRoute    = require('./src/routes/explain');
 const pharmaciesRoute = require('./src/routes/pharmacies');
 const recordsRoute    = require('./src/routes/records');
+const adminRoute      = require('./src/routes/admin');
+const adminAuth       = require('./src/middleware/adminAuth');
 
 const app = express();
 app.use(cors());
@@ -20,6 +22,7 @@ app.use('/api/translate',  translateRoute);
 app.use('/api/explain',    explainRoute);
 app.use('/api/pharmacies', pharmaciesRoute);
 app.use('/api/records',    recordsRoute);
+app.use('/admin',          adminAuth, adminRoute);
 
 app.get('/', (req, res) => {
   res.json({

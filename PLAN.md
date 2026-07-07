@@ -123,11 +123,11 @@ All queries aggregate data — no `waId`, no `rawOcrText`, no individual records
 - Minimum group size of 5 enforced (suppress towns or drugs with fewer than 5 queries to prevent inference attacks)
 
 ### Tasks
-- [ ] Create `src/routes/admin.js` with all six stats endpoints
-- [ ] Write Prisma aggregate queries for each endpoint
-- [ ] Apply minimum-group-size filter (n < 5 → omit from results)
-- [ ] Mount admin router in `index.js` under `/admin`
-- [ ] Test each endpoint manually via curl or browser
+- [x] Create `src/routes/admin.js` with all six stats endpoints
+- [x] Write Prisma aggregate queries for each endpoint
+- [x] Apply minimum-group-size filter (n < 5 → omit from results)
+- [x] Mount admin router in `index.js` under `/admin`
+- [x] Test each endpoint manually via curl or browser
 - [ ] Commit and push: `feat: add anonymised admin stats API`
 
 ---
@@ -206,5 +206,5 @@ conversations
 |---|---|---|---|
 | 1 — Schema | `feat/confirmed-prescriptions-schema` | [x] Complete | — |
 | 2 — WhatsApp flow | `feat/confirmed-prescriptions-flow` | [x] Complete | — |
-| 3 — Admin API | `feat/admin-portal-api` | [ ] Not started | — |
+| 3 — Admin API | `feat/admin-portal-api` | [x] Complete | — |
 | 4 — Admin Dashboard | `feat/admin-portal-dashboard` | [ ] Not started | — |
