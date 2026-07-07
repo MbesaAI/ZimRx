@@ -2,7 +2,7 @@ const { sendMessage } = require('../services/whatsapp');
 const { extractTextFromImage, extractTextFromBuffer } = require('../services/ocr');
 const { lookupDrugs } = require('../services/drugLookup');
 const { explainDrugs } = require('../services/llm');
-const { findNearestPharmacies, findPharmaciesByTown } = require('../services/pharmacyFinder');
+const { findNearestPharmacies, findPharmaciesByTown, geocodeAddress } = require('../services/pharmacyFinder');
 const { LANGUAGE_MENU, getMessages } = require('../i18n/messages');
 const prisma = require('../db/client');
 
@@ -246,17 +246,38 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       return;
     }
 
-    // ── Town name while waiting for location ─────────────────────────────────
+    // ── Town name / address while waiting for location ───────────────────────
     if (state === STATES.AWAITING_LOCATION) {
-      const pharmacies = await findPharmaciesByTown(text, 3);
-      if (pharmacies.length > 0) {
-        const list = pharmacies.map((p, i) =>
+      // 1. Fast path: exact town name match in MCAZ register
+      const byTown = await findPharmaciesByTown(text, 3);
+      if (byTown.length > 0) {
+        const list = byTown.map((p, i) =>
           `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}`
         ).join('\n\n');
         await send(from, m.townPharmacies(text, list));
         await transitionTo(from, STATES.IDLE);
         return;
       }
+
+      // 2. Geocode the address / suburb / landmark with Nominatim
+      await send(from, m.FINDING_PHARMACIES);
+      const geo = await geocodeAddress(text);
+      if (geo) {
+        const pharmacies = await findNearestPharmacies(geo.lat, geo.lon, 3);
+        if (pharmacies.length > 0) {
+          const list = pharmacies.map((p, i) =>
+            `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}${p.distanceKm ? `\n📏 ${p.distanceKm.toFixed(1)} km away` : ''}`
+          ).join('\n\n');
+          await send(from, m.nearestPharmacies(list));
+          await transitionTo(from, STATES.IDLE);
+          return;
+        }
+      }
+
+      // 3. Nothing found
+      await send(from, m.NO_PHARMACIES);
+      await transitionTo(from, STATES.IDLE);
+      return;
     }
 
     // ── Default — show menu ──────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const { findNearestPharmacies, findPharmaciesByTown } = require('../services/pharmacyFinder');
+const { findNearestPharmacies, findPharmaciesByTown, geocodeAddress } = require('../services/pharmacyFinder');
 
 /**
  * @swagger

@@ -1,4 +1,27 @@
 const prisma = require('../db/client');
+const axios  = require('axios');
+
+async function geocodeAddress(query) {
+  try {
+    const res = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: {
+        q:            `${query}, Zimbabwe`,
+        countrycodes: 'zw',
+        format:       'json',
+        limit:        1,
+        addressdetails: 0,
+      },
+      headers: { 'User-Agent': 'ZimRx/1.0 (prescription-assistant; contact@zimrx.app)' },
+      timeout: 6000,
+    });
+    if (res.data && res.data.length > 0) {
+      return { lat: parseFloat(res.data[0].lat), lon: parseFloat(res.data[0].lon), displayName: res.data[0].display_name };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -55,4 +78,4 @@ async function findPharmaciesByTown(town, limit = 5) {
   });
 }
 
-module.exports = { findNearestPharmacies, findPharmaciesByTown };
+module.exports = { findNearestPharmacies, findPharmaciesByTown, geocodeAddress };
