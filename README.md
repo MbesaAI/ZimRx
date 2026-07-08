@@ -411,7 +411,7 @@ zimrx/
 ### Clone and install
 
 ```bash
-git clone https://github.com/Towernter/ZimRx.git
+git clone https://github.com/MbesaAI/ZimRx.git
 cd ZimRx
 npm install
 ```
