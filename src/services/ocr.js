@@ -29,38 +29,26 @@ async function extractTextFromBuffer(imageBuffer) {
             type: 'text',
             text: `Examine this image carefully.
 
-STEP 1 — Is this a drug prescription? A drug prescription is a document from a doctor or clinic that lists MEDICATIONS (drugs) for a patient to collect and take.
+STEP 1 — Does this document contain pharmaceutical drug names written with doses?
 
-ACCEPT as a prescription when it PRESCRIBES DRUGS and you see ANY of:
-• A printed "PRESCRIPTION FORM", "PRESCRIPTION", or "Rx" heading
-• A "DRUGS PRESCRIBED" or "MEDICATIONS" section with drug names and doses
-• A doctor's personal letterhead (name + qualifications: MBChB, MD, MMed, Paediatrician, Specialist, etc.) with handwritten drug names and doses below
-• A doctor stamp or AHFOZ/prescribing registration number alongside drug entries
+Ignore the printed form type entirely. A doctor in a rural clinic or busy hospital may write a drug prescription on any available paper — an X-ray request form, a lab form, a referral slip, or plain paper. What matters is the CONTENT, not the form header.
 
-REJECT — set isValidPrescription: false — for ALL of these:
+Ask yourself: are there actual pharmaceutical drug names (medicines, tablets, capsules, syrups, creams, drops, injections) written here with doses or instructions?
 
-Non-medical commercial documents:
-• Headed INVOICE, QUOTATION, DELIVERY NOTE, RECEIPT, or STATEMENT
-• Itemises non-medical goods: clothing, car parts, food, school supplies, building materials
-• Has commercial columns: QTY / UNIT PRICE / TOTAL / GRAND TOTAL / VAT / SUB-TOTAL
-• Issued by a shop, garage, mechanic, supplier, wholesaler, or school
+Set isValidPrescription: TRUE if pharmaceutical drug names with doses appear anywhere on the document — even if the printed header says "X-RAY REQUEST", "LAB REQUEST", "REFERRAL", or anything else.
 
-Medical-but-not-a-prescription documents (these are FROM a hospital but do NOT prescribe drugs):
-• X-RAY REQUEST, RADIOLOGY REQUEST, IMAGING REQUEST
-• LAB REQUEST, LABORATORY REQUEST, PATHOLOGY REQUEST, BLOOD TEST REQUEST
-• REFERRAL LETTER, REFERRAL FORM, TRANSFER LETTER
-• ADMISSION FORM, WARD ADMISSION, HOSPITALIZATION form
-• SICK NOTE, MEDICAL CERTIFICATE, FIT NOTE
-• Any form whose main purpose is to request an investigation, procedure, or service — NOT to dispense medication
+Set isValidPrescription: FALSE only when:
+• The document is a commercial document (INVOICE, QUOTATION, DELIVERY NOTE, RECEIPT) listing non-medical goods (clothing, car parts, food, school supplies) with pricing columns — AND contains no drug names
+• The document contains ONLY medical equipment, devices, or procedures (oxygen concentrators, nasal prongs, X-ray examinations, blood tests, referral reasons) but NO pharmaceutical drug names with doses
 
-STEP 2 — If it IS a drug prescription, extract each medication. The handwriting may be very poor — do your best.
+STEP 2 — If drug names ARE present, extract each medication. Handwriting may be very poor — do your best.
 
-Use ALL context clues to identify the correct pharmaceutical name:
-• Specialist on letterhead: Paediatrician → Cloxacillin, Bactroban, Nerizone, emulsifying ointment, Hydrocortisone; ENT → Flomist, Avamys, Exocin, Otosporin
+Use ALL context clues to recover the correct pharmaceutical name:
+• Specialist on the letterhead: Paediatrician → Cloxacillin, Bactroban, Nerizone, emulsifying ointment, Hydrocortisone; ENT → Flomist, Avamys, Exocin, Otosporin
 • Dosage form after the name: "nasal spray" → nasal corticosteroid; "cream" → topical antibiotic/steroid; "ear drops" → antibiotic ear drop
 • Vowels are easily confused in handwriting (o↔e, a↔e, i↔u) — choose the real pharmaceutical name that makes clinical sense
 • Other drugs on the same prescription as cross-reference
-• Do NOT extract medical equipment, devices, or procedures (oxygen concentrators, nasal prongs, X-rays) as medications
+• Medical equipment and devices (oxygen concentrators, nebulizers, etc.) can be legitimately prescribed — extract them if a doctor has prescribed them with usage instructions
 
 Return ONLY a JSON object:
 {
@@ -69,10 +57,10 @@ Return ONLY a JSON object:
   "medications": [{"name": "correct drug name", "dose": "...", "form": "..."}]
 }
 
-If NOT a drug prescription:
+If NO drug names with doses are present:
 {
   "isValidPrescription": false,
-  "notPrescriptionReason": "invoice|quotation|receipt|xray_request|lab_request|referral|admission_form|sick_note|other",
+  "notPrescriptionReason": "invoice|quotation|receipt|xray_request|lab_request|referral|no_drugs|other",
   "rawText": "all visible text",
   "medications": []
 }
