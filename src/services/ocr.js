@@ -29,29 +29,38 @@ async function extractTextFromBuffer(imageBuffer) {
             type: 'text',
             text: `Examine this image carefully.
 
-STEP 1 — Decide if this is a medical prescription. When in doubt, treat it as a prescription.
+STEP 1 — Is this a drug prescription? A drug prescription is a document from a doctor or clinic that lists MEDICATIONS (drugs) for a patient to collect and take.
 
-Reject ONLY when the document is CLEARLY a commercial or non-medical document:
-• Headed INVOICE, QUOTATION, DELIVERY NOTE, RECEIPT, or STATEMENT
-• Itemises non-medical goods: clothing, car parts, food, school supplies, building materials, electronics
-• Has commercial columns: QTY / UNIT PRICE / TOTAL PRICE / GRAND TOTAL / VAT / SUB-TOTAL
-• Issued by a shop, garage, mechanic, supplier, wholesaler, school, or auto dealer
-
-Accept as a prescription when you see ANY of these — even if the handwriting is very messy:
+ACCEPT as a prescription when it PRESCRIBES DRUGS and you see ANY of:
 • A printed "PRESCRIPTION FORM", "PRESCRIPTION", or "Rx" heading
-• A doctor's personal letterhead (doctor name + medical qualifications: MBChB, MD, MBBCh, MMed, FRCGP, FCORL, Paediatrician, Specialist, etc.)
-• A "DRUGS PRESCRIBED" or "MEDICATIONS" section
-• A doctor stamp, AHFOZ number, or prescribing doctor registration number
-• Handwritten drug names with doses, even if very hard to read
+• A "DRUGS PRESCRIBED" or "MEDICATIONS" section with drug names and doses
+• A doctor's personal letterhead (name + qualifications: MBChB, MD, MMed, Paediatrician, Specialist, etc.) with handwritten drug names and doses below
+• A doctor stamp or AHFOZ/prescribing registration number alongside drug entries
 
-STEP 2 — If it IS a prescription, extract each medication. The handwriting may be very poor — do your best.
+REJECT — set isValidPrescription: false — for ALL of these:
+
+Non-medical commercial documents:
+• Headed INVOICE, QUOTATION, DELIVERY NOTE, RECEIPT, or STATEMENT
+• Itemises non-medical goods: clothing, car parts, food, school supplies, building materials
+• Has commercial columns: QTY / UNIT PRICE / TOTAL / GRAND TOTAL / VAT / SUB-TOTAL
+• Issued by a shop, garage, mechanic, supplier, wholesaler, or school
+
+Medical-but-not-a-prescription documents (these are FROM a hospital but do NOT prescribe drugs):
+• X-RAY REQUEST, RADIOLOGY REQUEST, IMAGING REQUEST
+• LAB REQUEST, LABORATORY REQUEST, PATHOLOGY REQUEST, BLOOD TEST REQUEST
+• REFERRAL LETTER, REFERRAL FORM, TRANSFER LETTER
+• ADMISSION FORM, WARD ADMISSION, HOSPITALIZATION form
+• SICK NOTE, MEDICAL CERTIFICATE, FIT NOTE
+• Any form whose main purpose is to request an investigation, procedure, or service — NOT to dispense medication
+
+STEP 2 — If it IS a drug prescription, extract each medication. The handwriting may be very poor — do your best.
 
 Use ALL context clues to identify the correct pharmaceutical name:
-• Specialist on the letterhead: Paediatrician → paediatric antibiotics, antifungals, emollients (Cloxacillin, Bactroban, Nerizone, emulsifying ointment, Hydrocortisone); ENT surgeon → nasal sprays and ear drops (Flomist, Avamys, Exocin, Otosporin)
-• Dosage form after the name: "nasal spray" → nasal corticosteroid; "cream" → topical antibiotic or steroid; "ear drops" → antibiotic ear drop
-• Other drugs on the same prescription as cross-reference
+• Specialist on letterhead: Paediatrician → Cloxacillin, Bactroban, Nerizone, emulsifying ointment, Hydrocortisone; ENT → Flomist, Avamys, Exocin, Otosporin
+• Dosage form after the name: "nasal spray" → nasal corticosteroid; "cream" → topical antibiotic/steroid; "ear drops" → antibiotic ear drop
 • Vowels are easily confused in handwriting (o↔e, a↔e, i↔u) — choose the real pharmaceutical name that makes clinical sense
-• If a word is completely illegible but a dose/form is visible, make your best pharmaceutical guess for that specialty
+• Other drugs on the same prescription as cross-reference
+• Do NOT extract medical equipment, devices, or procedures (oxygen concentrators, nasal prongs, X-rays) as medications
 
 Return ONLY a JSON object:
 {
@@ -60,10 +69,10 @@ Return ONLY a JSON object:
   "medications": [{"name": "correct drug name", "dose": "...", "form": "..."}]
 }
 
-If NOT a prescription (clearly a commercial document):
+If NOT a drug prescription:
 {
   "isValidPrescription": false,
-  "notPrescriptionReason": "invoice|quotation|receipt|delivery_note|other",
+  "notPrescriptionReason": "invoice|quotation|receipt|xray_request|lab_request|referral|admission_form|sick_note|other",
   "rawText": "all visible text",
   "medications": []
 }
