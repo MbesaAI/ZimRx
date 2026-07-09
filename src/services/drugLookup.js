@@ -8,6 +8,62 @@ const MEDICINE_SELECT = {
   strength: true, form: true, category: true,
 };
 
+// Returns all single-vowel substitution variants of a drug name.
+// e.g. "flemist" → ["flamist","flimist","flomist","flumist","flemast","flemest","flemost","flemust"]
+// Catches handwriting OCR errors where o/e/a/i/u are confused.
+function generateVowelVariants(name) {
+  const VOWELS = ['a', 'e', 'i', 'o', 'u'];
+  const lower = name.toLowerCase();
+  const variants = new Set();
+  for (let i = 0; i < lower.length; i++) {
+    if (VOWELS.includes(lower[i])) {
+      for (const v of VOWELS) {
+        if (v !== lower[i]) variants.add(lower.slice(0, i) + v + lower.slice(i + 1));
+      }
+    }
+  }
+  return [...variants];
+}
+
+// Asks Claude to identify the correct pharmaceutical name for each drug that
+// returned zero DB candidates. Works like a "Did you mean?" — Claude knows
+// "flemist nasal spray" → "Flomist", but will return null for non-medicines.
+async function getLLMCorrectedNames(items) {
+  if (items.length === 0) return {};
+
+  const listed = items.map(item => {
+    const med  = item.med;
+    const hint = typeof med === 'object' ? [med.dose, med.form].filter(Boolean).join(' ') : '';
+    return `"${item.name}"${hint ? ` (${hint})` : ''}`;
+  }).join('\n');
+
+  const prompt = `You are a clinical pharmacist. These drug names were extracted from handwritten prescriptions and could NOT be found in a medicines register. They likely have OCR or handwriting errors — vowels are commonly confused (o/e/a/i/u).
+
+For each, return the correct pharmaceutical name that was most likely intended. Use the dosage form hint as a clue (e.g. "nasal spray" → Flomist, Avamys, or Nasonex; "ear drops" → Exocin or Otosporin; "cream" → Bactroban, Fucidin, etc.).
+
+${listed}
+
+Return ONLY a JSON object mapping the original name to the corrected pharmaceutical name, or null if you genuinely cannot identify a known medicine:
+{"flemist": "Flomist", "exxuno": "Exocin", "unknowndrug123": null}
+
+Return ONLY the JSON object.`;
+
+  try {
+    const response = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 256,
+      messages:   [{ role: 'user', content: prompt }],
+    });
+    const raw = (response.content[0]?.text || '').replace(/```(?:json)?\s*/gi, '').trim();
+    console.log('[drugLookup] LLM name correction raw:', raw.slice(0, 300));
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error('[drugLookup] LLM name correction error:', err.message);
+  }
+  return {};
+}
+
 // ── Main matcher used by the image flow ────────────────────────────────────
 // medications: [{name, dose, form}] from Claude OCR (or plain strings)
 // Returns { matched: McazRecord[], notInMCAZ: string[] }
@@ -48,10 +104,61 @@ async function matchMedications(medications) {
         });
       }
 
+      // Tier 3: vowel-substitution fuzzy search — catches handwriting OCR errors
+      // where a/e/i/o/u are misread (e.g. "flemist" → "flomist")
+      if (candidates.length === 0 && name.length >= 4) {
+        const variants = generateVowelVariants(name);
+        if (variants.length > 0) {
+          candidates = await prisma.medicine.findMany({
+            where: {
+              OR: variants.flatMap(v => [
+                { genericName: { startsWith: v, mode: 'insensitive' } },
+                { tradeName:   { startsWith: v, mode: 'insensitive' } },
+              ]),
+            },
+            select: MEDICINE_SELECT,
+            take: 15,
+          });
+          if (candidates.length > 0) {
+            console.log(`[drugLookup] "${name}" → fuzzy vowel match → ${candidates.length} candidates`);
+          }
+        }
+      }
+
       console.log(`[drugLookup] "${name}" → ${candidates.length} DB candidates`);
       return { med, name, candidates };
     })
   );
+
+  // Tier 4 — LLM "Did you mean?" for names still unmatched after all DB tiers.
+  // Claude's pharmaceutical knowledge recognises "flemist" → "Flomist" the same
+  // way Google autocorrects a misspelled search — but the result must be a
+  // known medicine, not a guess. One batched call covers all unmatched names.
+  const stillEmpty = withCandidates.filter(m => m.candidates.length === 0 && m.name);
+  if (stillEmpty.length > 0) {
+    const corrections = await getLLMCorrectedNames(stillEmpty);
+    await Promise.all(stillEmpty.map(async item => {
+      const corrected = corrections[item.name];
+      if (!corrected || corrected.toLowerCase() === item.name.toLowerCase()) return;
+      console.log(`[drugLookup] "${item.name}" → LLM corrected to "${corrected}"`);
+      const found = await prisma.medicine.findMany({
+        where: {
+          OR: [
+            { genericName: { startsWith: corrected, mode: 'insensitive' } },
+            { tradeName:   { startsWith: corrected, mode: 'insensitive' } },
+            { genericName: { contains:   corrected, mode: 'insensitive' } },
+            { tradeName:   { contains:   corrected, mode: 'insensitive' } },
+          ],
+        },
+        select: MEDICINE_SELECT,
+        take: 15,
+      });
+      if (found.length > 0) {
+        item.candidates = found;
+        console.log(`[drugLookup] "${corrected}" → ${found.length} candidates after LLM correction`);
+      }
+    }));
+  }
 
   // Split into matchable (has candidates) and notInMCAZ (no candidates at all)
   const matchable  = withCandidates.filter(m => m.candidates.length > 0);

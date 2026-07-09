@@ -88,9 +88,14 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     await send(from, m.SCANNING);
 
-    const { text: ocrText, medications } = buffer
+    const { text: ocrText, medications, isValidPrescription } = buffer
       ? await extractTextFromBuffer(buffer)
       : await extractTextFromImage(mediaId);
+
+    if (isValidPrescription === false) {
+      await send(from, m.NOT_A_PRESCRIPTION);
+      return;
+    }
 
     if (!ocrText && medications.length === 0) {
       await send(from, m.OCR_FAIL);
