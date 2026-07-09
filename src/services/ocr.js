@@ -29,21 +29,29 @@ async function extractTextFromBuffer(imageBuffer) {
             type: 'text',
             text: `Examine this image carefully.
 
-STEP 1 — Is this a genuine medical prescription from a doctor or healthcare provider?
+STEP 1 — Decide if this is a medical prescription. When in doubt, treat it as a prescription.
 
-Signs it IS a valid prescription: headed "PRESCRIPTION FORM" or "Rx", has a "DRUGS PRESCRIBED" / "MEDICATIONS" section, lists drug names with doses, has a doctor name/signature/stamp/registration number (e.g. AHFOZ number).
-
-Signs it is NOT a prescription — reject these:
+Reject ONLY when the document is CLEARLY a commercial or non-medical document:
 • Headed INVOICE, QUOTATION, DELIVERY NOTE, RECEIPT, or STATEMENT
-• Items are clothing, car parts, food, school supplies, building materials, or other non-medical goods
-• Has columns for QTY / UNIT PRICE / TOTAL PRICE / GRAND TOTAL / VAT / SUB-TOTAL
-• Issued by a shop, garage, mechanic, supplier, wholesaler, or school
+• Itemises non-medical goods: clothing, car parts, food, school supplies, building materials, electronics
+• Has commercial columns: QTY / UNIT PRICE / TOTAL PRICE / GRAND TOTAL / VAT / SUB-TOTAL
+• Issued by a shop, garage, mechanic, supplier, wholesaler, school, or auto dealer
 
-STEP 2 — If it IS a prescription, extract each medication. Handwritten drug names often have vowel OCR errors (o↔e, a↔e, i↔u, etc.). Use ALL available context clues to recover the correct pharmaceutical name:
-• Specialist type on the letterhead: ENT/Ear-Nose-Throat surgeon → expect nasal sprays and ear drops (Flomist, Avamys, Nasonex, Otosporin, Exocin); Paediatrician → paediatric antibiotics, antiparasitics; Oncologist → chemotherapy agents; etc.
-• Dosage form written after the name: "nasal spray" → the drug is almost certainly a nasal corticosteroid (Flomist/Avamys/Nasonex), NOT an unknown word like "flemist"
+Accept as a prescription when you see ANY of these — even if the handwriting is very messy:
+• A printed "PRESCRIPTION FORM", "PRESCRIPTION", or "Rx" heading
+• A doctor's personal letterhead (doctor name + medical qualifications: MBChB, MD, MBBCh, MMed, FRCGP, FCORL, Paediatrician, Specialist, etc.)
+• A "DRUGS PRESCRIBED" or "MEDICATIONS" section
+• A doctor stamp, AHFOZ number, or prescribing doctor registration number
+• Handwritten drug names with doses, even if very hard to read
+
+STEP 2 — If it IS a prescription, extract each medication. The handwriting may be very poor — do your best.
+
+Use ALL context clues to identify the correct pharmaceutical name:
+• Specialist on the letterhead: Paediatrician → paediatric antibiotics, antifungals, emollients (Cloxacillin, Bactroban, Nerizone, emulsifying ointment, Hydrocortisone); ENT surgeon → nasal sprays and ear drops (Flomist, Avamys, Exocin, Otosporin)
+• Dosage form after the name: "nasal spray" → nasal corticosteroid; "cream" → topical antibiotic or steroid; "ear drops" → antibiotic ear drop
 • Other drugs on the same prescription as cross-reference
-• When a word looks like a misspelled drug, return the closest real pharmaceutical name
+• Vowels are easily confused in handwriting (o↔e, a↔e, i↔u) — choose the real pharmaceutical name that makes clinical sense
+• If a word is completely illegible but a dose/form is visible, make your best pharmaceutical guess for that specialty
 
 Return ONLY a JSON object:
 {
@@ -52,7 +60,7 @@ Return ONLY a JSON object:
   "medications": [{"name": "correct drug name", "dose": "...", "form": "..."}]
 }
 
-If NOT a prescription:
+If NOT a prescription (clearly a commercial document):
 {
   "isValidPrescription": false,
   "notPrescriptionReason": "invoice|quotation|receipt|delivery_note|other",

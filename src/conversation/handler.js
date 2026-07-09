@@ -155,7 +155,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
     const { latitude, longitude } = message.location;
     await send(from, m.FINDING_PHARMACIES);
 
-    const pharmacies = await findNearestPharmacies(latitude, longitude, 3);
+    const pharmacies = await findNearestPharmacies(latitude, longitude, 5);
 
     if (pharmacies.length === 0) {
       await send(from, m.NO_PHARMACIES);
@@ -277,7 +277,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
     // ── Town name / address while waiting for location ───────────────────────
     if (state === STATES.AWAITING_LOCATION) {
       // 1. Fast path: exact town name match in MCAZ register
-      const byTown = await findPharmaciesByTown(text, 3);
+      const byTown = await findPharmaciesByTown(text, 5);
       if (byTown.length > 0) {
         const list = byTown.map((p, i) =>
           `*${i + 1}. ${p.premisesName}*\n📍 ${p.address}, ${p.town}`
@@ -293,7 +293,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       if (geo) {
         // Use the town extracted from geocoding directly; avoids a second reverse-geocode call
         const pharmacies = geo.town
-          ? await findPharmaciesByTown(geo.town, 3)
+          ? await findPharmaciesByTown(geo.town, 5)
           : await findNearestPharmacies(geo.lat, geo.lon, 3);
         if (pharmacies.length > 0) {
           const resolvedTown = geo.town || text;

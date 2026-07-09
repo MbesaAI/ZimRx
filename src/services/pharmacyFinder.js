@@ -57,7 +57,7 @@ const PHARMACY_TYPES = [
   'PHARMACIES-RESTRICTED',
 ];
 
-async function findNearestPharmacies(latitude, longitude, limit = 3) {
+async function findNearestPharmacies(latitude, longitude, limit = 5) {
   // Try pharmacies that have coordinates stored (future-proof if data improves)
   const withCoords = await prisma.pharmacy.findMany({
     where: {
