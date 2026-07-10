@@ -16,8 +16,8 @@ async function extractTextFromBuffer(imageBuffer) {
     const base64    = imageBuffer.toString('base64');
 
     const response = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      model:      'claude-sonnet-4-6',
+      max_tokens: 2048,
       messages: [{
         role: 'user',
         content: [

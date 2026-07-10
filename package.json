@@ -13,6 +13,8 @@
     "seed:pharmacies": "node src/db/seed/seedPharmacies.js",
     "seed": "npm run seed:medicines && npm run seed:pharmacies",
     "geocode:pharmacies": "node src/db/seed/geocodePharmacies.js",
+    "geocode:fallback": "node src/db/seed/geocodeFallbackByTown.js",
+    "import:coords": "node src/db/seed/importGeocodedCoords.js",
     "sync:registers": "node src/db/seed/syncMcazRegisters.js"
   },
   "keywords": [],
