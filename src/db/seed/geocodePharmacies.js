@@ -65,12 +65,17 @@ async function geocodePharmacy(p) {
   return null;
 }
 
-async function main() {
-  const pharmacies = await prisma.pharmacy.findMany({
-    where: {
-      premisesType: { in: PHARMACY_TYPES },
-      latitude:     null,
-    },
+async function geocodeNewPharmacies(client, ids) {
+  const db = client || prisma;
+
+  const where = {
+    premisesType: { in: PHARMACY_TYPES },
+    latitude:     null,
+    ...(ids !== undefined && { id: { in: ids } }),
+  };
+
+  const pharmacies = await db.pharmacy.findMany({
+    where,
     orderBy: { id: 'asc' },
   });
 
@@ -78,8 +83,8 @@ async function main() {
 
   if (pharmacies.length === 0) {
     console.log('Nothing to do — all pharmacies already have coordinates.');
-    await prisma.$disconnect();
-    return;
+    if (!client) await db.$disconnect();
+    return { hits: 0, misses: 0, errors: 0 };
   }
 
   const estimated = Math.ceil(pharmacies.length * DELAY_MS / 1000);
@@ -96,10 +101,20 @@ async function main() {
       const result = await geocodePharmacy(p);
 
       if (result) {
-        await prisma.pharmacy.update({
-          where: { id: p.id },
-          data:  { latitude: result.coords.lat, longitude: result.coords.lon },
-        });
+        // Retry DB write once on connection reset (Neon drops idle connections)
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            await db.pharmacy.update({
+              where: { id: p.id },
+              data:  { latitude: result.coords.lat, longitude: result.coords.lon },
+            });
+            break;
+          } catch (dbErr) {
+            if (attempt === 3) throw dbErr;
+            console.log(`\n  ↺ DB connection lost, retrying (${attempt}/3)...`);
+            await sleep(2000);
+          }
+        }
         console.log(`✅  ${result.coords.lat.toFixed(4)}, ${result.coords.lon.toFixed(4)}`);
         hits++;
       } else {
@@ -120,10 +135,15 @@ async function main() {
 ─────────────────────────────────────────
 `);
 
-  await prisma.$disconnect();
+  if (!client) await db.$disconnect();
+  return { hits, misses, errors };
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  geocodeNewPharmacies().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { geocodeNewPharmacies };

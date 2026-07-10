@@ -12,7 +12,8 @@
     "seed:medicines": "node src/db/seed/seedMedicines.js",
     "seed:pharmacies": "node src/db/seed/seedPharmacies.js",
     "seed": "npm run seed:medicines && npm run seed:pharmacies",
-    "geocode:pharmacies": "node src/db/seed/geocodePharmacies.js"
+    "geocode:pharmacies": "node src/db/seed/geocodePharmacies.js",
+    "sync:registers": "node src/db/seed/syncMcazRegisters.js"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +27,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "multer": "^2.2.0",
+    "node-cron": "^3.0.3",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "xlsx": "^0.18.5"

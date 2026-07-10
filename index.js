@@ -12,6 +12,7 @@ const recordsRoute    = require('./src/routes/records');
 const adminRoute      = require('./src/routes/admin');
 const adminAuth       = require('./src/middleware/adminAuth');
 const demoRoute       = require('./src/routes/demo');
+const { startScheduler } = require('./src/scheduler');
 
 const app = express();
 app.use(cors());
@@ -34,4 +35,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\nZimRx running on port ${PORT}`);
   console.log(`Swagger docs → http://localhost:${PORT}/api-docs\n`);
+  startScheduler();
 });
