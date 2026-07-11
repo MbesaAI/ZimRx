@@ -233,7 +233,6 @@ body{
 
   <!-- Chat messages -->
   <div class="chat" id="chat">
-    <div class="date-sep" id="dateSep">TODAY</div>
     <div class="typing" id="typing">
       <div class="dot"></div><div class="dot"></div><div class="dot"></div>
     </div>
@@ -464,27 +463,44 @@ async function sendLocation() {
   );
 }
 
+// ── Session label ──────────────────────────────────────────────────────────
+function addSessionLabel(text) {
+  const el = document.createElement('div');
+  el.className = 'date-sep';
+  el.textContent = text;
+  insertBeforeTyping(el);
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function boot(label) {
+  showTyping();
+  try {
+    const res  = await fetch(`/demo/boot?sessionId=${encodeURIComponent(sessionId)}`);
+    const data = await res.json();
+    hideTyping();
+    if (label) addSessionLabel(label);
+    else addSessionLabel(data.isNew ? 'NEW CONVERSATION' : 'WELCOME BACK');
+    (data.messages || []).forEach(addBotMessage);
+  } catch (e) {
+    hideTyping();
+    addBotMessage('❌ Could not reach the server. Is it running?');
+  }
+}
+
 // ── Reset ──────────────────────────────────────────────────────────────────
 async function resetChat() {
-  // Clear UI
-  const sep   = document.getElementById('dateSep');
   chat.innerHTML = '';
-  chat.appendChild(sep);
   chat.appendChild(typing);
   clearImage();
   document.getElementById('msgInput').value = '';
 
-  // New session → fresh conversation record in DB
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
   localStorage.setItem('zimrx_session_id', sessionId);
 
-  await callAPI({ type: 'text', body: 'hi' });
+  await boot('NEW CONVERSATION');
 }
 
-// ── Boot ───────────────────────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  callAPI({ type: 'text', body: 'hi' });
-});
+window.addEventListener('load', () => boot());
 </script>
 </body>
 </html>
