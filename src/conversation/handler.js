@@ -16,12 +16,23 @@ const STATES = {
 
 // ── DB helpers ─────────────────────────────────────────────────────────────
 
+const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12 hours
+
 async function getOrCreateConversation(waId) {
-  return prisma.conversation.upsert({
+  const conv = await prisma.conversation.upsert({
     where:  { waId },
     update: { lastMessageAt: new Date() },
     create: { waId, state: STATES.IDLE }
   });
+  // Reset stale sessions so the user gets a fresh start with a menu
+  const age = Date.now() - new Date(conv.lastMessageAt).getTime();
+  if (age > SESSION_TIMEOUT_MS && conv.state !== STATES.IDLE) {
+    return prisma.conversation.update({
+      where: { waId },
+      data:  { state: STATES.IDLE, pendingPrescriptionId: null }
+    });
+  }
+  return conv;
 }
 
 async function transitionTo(waId, state, pendingPrescriptionId = undefined) {
@@ -94,11 +105,15 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     if (isValidPrescription === false) {
       await send(from, m.NOT_A_PRESCRIPTION);
+      await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
     if (!ocrText && medications.length === 0) {
       await send(from, m.OCR_FAIL);
+      await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
@@ -126,6 +141,8 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     if (matched.length === 0 && notInMCAZ.length === 0) {
       await send(from, m.NO_DRUGS);
+      await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
@@ -160,6 +177,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
     if (pharmacies.length === 0) {
       await send(from, m.NO_PHARMACIES);
       await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
@@ -169,6 +187,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
 
     await send(from, m.nearestPharmacies(list));
     await transitionTo(from, STATES.IDLE);
+    await send(from, m.MENU);
     return;
   }
 
@@ -243,12 +262,14 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx || lastRx.drugsDetected.length === 0) {
         await send(from, m.NO_PRESCRIPTION_YET);
+        await send(from, m.MENU);
         return;
       }
       await send(from, m.LOOKING_UP);
       const explanation = await explainDrugs(lastRx.drugsDetected, language);
       await send(from, m.medicationExplained(explanation));
       await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
@@ -266,11 +287,14 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       const lastRx = await getLastPrescription(conversationId);
       if (!lastRx) {
         await send(from, m.NO_RECORD);
+        await send(from, m.MENU);
         return;
       }
       const drugs = lastRx.drugsDetected.join(', ');
       const date  = lastRx.submittedAt.toLocaleDateString('en-GB');
       await send(from, m.lastPrescription(date, drugs));
+      await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
@@ -284,6 +308,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
         ).join('\n\n');
         await send(from, m.townPharmacies(text, list));
         await transitionTo(from, STATES.IDLE);
+        await send(from, m.MENU);
         return;
       }
 
@@ -302,6 +327,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
           ).join('\n\n');
           await send(from, m.townPharmacies(resolvedTown, list));
           await transitionTo(from, STATES.IDLE);
+          await send(from, m.MENU);
           return;
         }
       }
@@ -309,6 +335,7 @@ async function handleIncomingMessage(from, type, message, sendFn) {
       // 3. Nothing found
       await send(from, m.NO_PHARMACIES);
       await transitionTo(from, STATES.IDLE);
+      await send(from, m.MENU);
       return;
     }
 
