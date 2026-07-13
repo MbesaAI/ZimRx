@@ -606,15 +606,15 @@ prescriptions
 - [x] Ndebele language responses
 - [ ] Drug interaction checker (flag dangerous combinations)
 - [ ] Photo quality validation before OCR
-- [ ] Manual drug name text input as OCR fallback
+- [x] Manual drug name text input as OCR fallback
 
 ### Phase 3 — Pharmacy Geocoding
-- [ ] Geocode all 2,246 pharmacy addresses using Google Maps Geocoding API
-- [ ] Enable accurate distance-sorted pharmacy results for all users
+- [x] Geocode all 2,246 pharmacy addresses using Google Maps Geocoding API
+- [x] Enable accurate distance-sorted pharmacy results for all users
 - [ ] Add pharmacy operating hours
 
 ### Phase 4 — Institutional Layer
-- [ ] MCAZ analytics dashboard (prescription volume by drug, region, time)
+- [x] MCAZ analytics dashboard (prescription volume by drug, region, time)
 - [ ] Controlled drug flagging (Narcotics / Schedule 10 alerts)
 - [ ] Duplicate prescription detection
 - [ ] Pharmacy compliance portal for dispensing records
@@ -626,19 +626,6 @@ prescriptions
 - [ ] MCAZ data partnership agreement
 - [ ] Scale to Bulawayo, Mutare, Gweru
 
----
-
-## Cost at Prototype Scale
-
-| Service | Free Tier | Expected Monthly Cost |
-|---|---|---|
-| Railway | $5 credit/month | ~$0 at low traffic |
-| Neon Postgres | Free forever, 0.5GB | $0 |
-| WhatsApp Cloud API | 1,000 conversations/month | $0 |
-| Google Vision API | $300 free credit | $0 |
-| Claude Haiku | ~$0.25 per million tokens | ~$1–3 |
-| ngrok (dev only) | Free | $0 |
-| **Total** | | **~$1–3/month** |
 
 ---
 
@@ -658,7 +645,6 @@ prescriptions
 *Translating Zimbabwe's National AI Strategy into Practical, High-Impact Solutions*
 
 National Innovation Acceleration Centre (NIAC)
-Mutare Residential Bootcamp — 27 July to 1 August 2026
 
 ---
 
