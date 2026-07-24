@@ -73,8 +73,11 @@ async function handleIncomingMessage(from, type, message, sendFn) {
   const { state, id: conversationId, pendingPrescriptionId, language } = conversation;
 
   // ── LANGUAGE SELECTION ─────────────────────────────────────────────────────
+  // Any text while no language is set is a language choice — don't gate on state.
+  // The menu may have been shown by /boot (which leaves state IDLE), so requiring
+  // AWAITING_LANGUAGE here would silently drop the user's first selection.
   if (!language) {
-    if (state === STATES.AWAITING_LANGUAGE && type === 'text') {
+    if (type === 'text') {
       const text = message.text.body.trim();
       const selected = text === '1' ? 'en' : text === '2' ? 'sn' : text === '3' ? 'nd' : null;
       if (selected) {
